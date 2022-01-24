@@ -3,12 +3,20 @@
 
 3. starting from the desired end of the gene and direction, excluding the first n basepairs (bp) 
     find first clean cut site (CS), meaning same code as one of RS (separate function)
-4. Merge X (n+len(RS)+CS offset, without STOP codon) with linker, FPG, alphaX
+4. Merge X (n+len(RS)+CS offset, without STOP codon) with linker, FPG, alphaX 
 5. Check for uniqueness of CS from 3. in sequence from 4.
 6. If not 5. repeat 3. starting from the last CS
 7. Search for the most outer CS from MCS that are not in 4. 
     (two independent searches, one from left, one from right. Maybe function from 3. can be used)
     7a. If impossible to find, exit
 8. Assemble the final plasmid without MCS part that is replaced with sequence from 4.
+    8a. Load one backbone and two idices for MCS 
 9. Check for uniqueness of CS from 3. in sequence the final plasmid
 10. If not 9. repeat 3. starting from the last CS
+11. If valid CS, return X, alphaX and assembled plasmid, and CS and MCS cut sites
+
+12. Find restriction enzymes from rsite database (1.) that do not cut the assembled plasmid
+
+
+
+X. Do upper steps for [5`,3`,deletion]
