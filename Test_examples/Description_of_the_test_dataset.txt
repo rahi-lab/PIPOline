@@ -1,0 +1,7 @@
+test examples:
+CLB5: ymNeonGreen, ymTq2, mCherry at the 3' end
+HTB2: mCherry, sfGFP at the 3'end
+CLB2: ymNeonGreen, ymTq2, mCherry at the 3' end
+GAL4: deletion
+
+other_parameters and solutions are shown in the readme file in the respective folders

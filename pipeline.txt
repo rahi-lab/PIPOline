@@ -50,13 +50,7 @@ Output (printed as a single file with coding sequences in fasta format and I gue
 4b. Find if recoding of all FPGs that cannot be used for tagging is possible for any cutsite in the [min_homology, max_homology] (there has to be a loop anyways for 4a, we can just store the details of it)
 
 
-test examples:
-CLB5: ymNeonGreen, ymTq2, mCherry at the 3' end
-HTB2: mCherry, sfGFP at the 3'end
-CLB2: ymNeonGreen, ymTq2, mCherry at the 3' end
-GAL4: deletion
 
-other_parameters and solutions are shown in the readme file in the respective folders
 
 
 BROTO
