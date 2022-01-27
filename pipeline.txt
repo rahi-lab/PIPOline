@@ -31,12 +31,14 @@ Input (given as a separate fasta files in the command line, or maybe retrieved f
 1. Plasmid backbone (pETUL): '*_backbone.fsa'
 2. Starting and ending index of MCS in the plasmid backbone (nucleotides counted from 1)
 3. min_homology: minimal homology in bp that should be included around the cutsite for integration into the yeast genome
-4. max_homology: maximal length in bp of the part used for the integration into the yeast genome (this is used as a stopping criteria to search for cutsite, should be < 1000 bp).
+4. max_homology: maximal length in bp of the part used for the integration into the yeast genome 
+(this is used as a stopping criteria to search for cutsite, should be < 1000 bp).
 4. alpha: relative length of the homology part used for integration and homology part used for pop-out
 5. Gene to be tagged or deleted, including 1000 bp upstream of starting codon and 1000 bp downstream of stop: '*_gene.fsa'
 6. Linker sequence: '*_linker.fsa'
 7. A parameter that described the choice between deleting the gene (0), tagging at the 5' end (5) or tagging at the 3' end (3)
-8. In case of tagging, coding sequences of FPG (including the stop codon) should be given as a separate files ending with: '*_FPG' (or maybe a single file with fasta, whatever is easier)
+8. In case of tagging, coding sequences of FPG (including the stop codon) should be given as a separate files ending with: '*_FPG' 
+(or maybe a single file with fasta, whatever is easier)
 9. A list of commercially available enzymes and their cutsites 
 
 Output (printed as a single file with coding sequences in fasta format and I guess can be also printed inside the command line):
@@ -46,8 +48,10 @@ Output (printed as a single file with coding sequences in fasta format and I gue
 3. Cutsites that can be added to the plasmid (do not include these within a plasmid but print them as an enzyme, cutsite list)
 
 4. In case there are multiple FPGs that should be used do 1-3 for all and print them as separate files
-4a. In case there is no appropriate cutsite in the [min_homology, max_homology] region then use the cutsite that allows tagging of biggest subset of FPGs (if there are several such cutsites print the one that requires least amount of DNA)
-4b. Find if recoding of all FPGs that cannot be used for tagging is possible for any cutsite in the [min_homology, max_homology] (there has to be a loop anyways for 4a, we can just store the details of it)
+4a. In case there is no appropriate cutsite in the [min_homology, max_homology] region then use the cutsite that allows tagging of biggest subset of FPGs 
+(if there are several such cutsites print the one that requires least amount of DNA)
+4b. Find if recoding of all FPGs that cannot be used for tagging is possible for any cutsite in the [min_homology, max_homology] 
+(there has to be a loop anyways for 4a, we can just store the details of it)
 
 
 
@@ -56,7 +60,8 @@ Output (printed as a single file with coding sequences in fasta format and I gue
 BROTO
 1. Msm da treba da dodamo samo warninge u slucaju da je alpha*X vece od 1000 i slicno
 2. Jedna stvar na koju neces mozda odmah da obratis paznju: kada budes dodavao labelovanje fluorescentnim genom na levom kraju, onda treba da se skine stop kodon sa FPG
-3. Za solutione nisam izdvojio sve sekvence posebno koje treba da outputuje program, samo sam napravio plazmide. Ali ako otvoris plazmide u SnapGene Vieweru (djabe je) onda su tu anotirani svi delovi (X, FPG, linker, alpha*X)
+3. Za solutione nisam izdvojio sve sekvence posebno koje treba da outputuje program, samo sam napravio plazmide. Ali ako otvoris plazmide u SnapGene Vieweru 
+(djabe je) onda su tu anotirani svi delovi (X, FPG, linker, alpha*X)
 
 General remark: We do not check whether the cutsites used from MCS are going to stay available after cloning
 
