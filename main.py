@@ -67,8 +67,7 @@ def read_gene_plus_string(Gene_plus):
     return (Left_of_gene, Gene, Right_of_gene)
 
 
-def rsite_search_func(Gene, rsitelist, enamelist, starting_end, min_homology=0, 
-                max_homology=1000):
+def rsite_search_func(Gene, rsitelist, enamelist, starting_end, min_homology=0):
 
     if starting_end == 5:
         Gene_cut = Gene[min_homology:]
@@ -76,7 +75,7 @@ def rsite_search_func(Gene, rsitelist, enamelist, starting_end, min_homology=0,
         sorted_inds = np.argsort(rsite_position_list)
         
     elif starting_end == 3:
-        Gene_cut = Gene[len(Gene)-max_homology:len(Gene)-min_homology]
+        Gene_cut = Gene[:len(Gene)-min_homology]
         rsite_position_list = np.array([Gene_cut.rfind(rsite) for rsite in rsitelist]) 
         sorted_inds = np.argsort(-rsite_position_list)
 
@@ -281,7 +280,6 @@ def main(args):
 
         # 4. and 5.
         rsite0 = gene_rsitelist_sorted[i]
-        rsite0_pos = gene_rsite_position_list_sorted[i]
         ename0 = gene_enamelist_sorted[i]
         rsite_place = rsite_places[i]
         full_sequences = full_sequences_per_rsite[i]
@@ -298,7 +296,6 @@ def main(args):
         # 7.
         # Search for the most outer CS from MCS that are not in 4. 
         rsite1, ename1, rsite2, ename2 = find_compatible_MCS_rsites(MCS, rsitelist, enamelist, full_sequences, backbone_no_MCS_5, backbone_no_MCS_3)
-
         if not rsite1 or not rsite2:
             print("""Enzyme {} cannot satisfy the conditions.
             good rsites not found in MCS""".format(ename0, rsite1, rsite2))
@@ -306,11 +303,10 @@ def main(args):
 
         # 8. 
         full_plasmid = assemble_plasmid(backbone_no_MCS_5, backbone_no_MCS_3, full_sequences[0])
-            
+
         if full_plasmid.count(rsite0) != 1:
             print("""Enzyme {} cannot satisfy the conditions.
             bad backbone for rsite0""".format(ename0, rsite0))
-
         else:
             if len(compatible_restriction_sites) == 0:
                 optimal_plasmid = full_plasmid
