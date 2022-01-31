@@ -94,18 +94,18 @@ def rsite_search_func(Gene, rsitelist, enamelist, starting_end, min_homology=0):
     return rsitelist, enamelist, rsite_position_list
 
 
-def generate_start_end_sequences(left_chunk, right_chunk, rsite_side, rsite_position, rsite, minhomology, alpha):
+def generate_start_end_sequences(left_chunk, right_chunk, rsite_side, rsite_position, rsite, minhomology, alpha, stop_codon_offset=0):
 
     if rsite_side not in ['left','right']:
         raise ValueError('Wrong Gene_side value')
 
     if rsite_side == 'left':
-        X = left_chunk[rsite_position-minhomology:-3]
+        X = left_chunk[rsite_position-minhomology:len(left_chunk)-stop_codon_offset]
         alphaX = right_chunk[:int(alpha*len(X))]
         return X, alphaX
     else:
         X = right_chunk[:rsite_position+len(rsite)+minhomology]
-        alphaX = left_chunk[-int(alpha*len(X))-3:-3]
+        alphaX = left_chunk[-int(alpha*len(X)):len(left_chunk)-stop_codon_offset]
         return alphaX, X
 
 
@@ -148,10 +148,14 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
         rsitelist_3UTR, enamelist_3UTR, rsite_position_list_3UTR = rsite_search_func(
             right_of_Gene, rsitelist, enamelist, 5, min_homology)
 
-        start_end_sequences_gene = [generate_start_end_sequences(
-            Gene, right_of_Gene, 'left', rsite_pos, rsite, min_homology, alpha) for rsite_pos, rsite in zip(rsite_position_list_gene, rsitelist_gene)]
-        start_end_sequences_3UTR = [generate_start_end_sequences(
-            Gene, right_of_Gene, 'right', rsite_pos, rsite, min_homology, alpha) for rsite_pos, rsite in zip(rsite_position_list_3UTR, rsitelist_3UTR)]
+        start_end_sequences_gene = [
+            generate_start_end_sequences(Gene, right_of_Gene, 'left', rsite_pos, rsite, min_homology, alpha, stop_codon_offset=3)
+            for rsite_pos, rsite in zip(rsite_position_list_gene, rsitelist_gene)
+        ]
+        start_end_sequences_3UTR = [
+            generate_start_end_sequences(Gene, right_of_Gene, 'right', rsite_pos, rsite, min_homology, alpha, stop_codon_offset=3)
+            for rsite_pos, rsite in zip(rsite_position_list_3UTR, rsitelist_3UTR)
+        ]
 
         full_sequences = [
             [start_seq+linker+FPG+end_seq for FPG in FPGs]
