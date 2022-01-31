@@ -67,7 +67,7 @@ def read_gene_plus_string(Gene_plus):
     return (Left_of_gene, Gene, Right_of_gene)
 
 
-def rsite_search_func(Gene, rsitelist, enamelist, starting_end, min_homology=0):
+def find_rsite_locations(Gene, rsitelist, enamelist, starting_end, min_homology=0):
 
     if starting_end == 5:
         Gene_cut = Gene[min_homology:]
@@ -117,9 +117,9 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
 
     if modality == 5:
 
-        rsitelist_gene, enamelist_gene, rsite_position_list_gene = rsite_search_func(
+        rsitelist_gene, enamelist_gene, rsite_position_list_gene = find_rsite_locations(
             Gene, rsitelist, enamelist, 5, min_homology)
-        rsitelist_5UTR, enamelist_5UTR, rsite_position_list_5TR = rsite_search_func(
+        rsitelist_5UTR, enamelist_5UTR, rsite_position_list_5TR = find_rsite_locations(
             left_of_Gene, rsitelist, enamelist, 3, min_homology)
 
         start_end_sequences_gene = [generate_start_end_sequences(
@@ -143,9 +143,9 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
 
     elif modality == 3:
 
-        rsitelist_gene, enamelist_gene, rsite_position_list_gene = rsite_search_func(
+        rsitelist_gene, enamelist_gene, rsite_position_list_gene = find_rsite_locations(
             Gene, rsitelist, enamelist, 3, min_homology)
-        rsitelist_3UTR, enamelist_3UTR, rsite_position_list_3UTR = rsite_search_func(
+        rsitelist_3UTR, enamelist_3UTR, rsite_position_list_3UTR = find_rsite_locations(
             right_of_Gene, rsitelist, enamelist, 5, min_homology)
 
         start_end_sequences_gene = [
@@ -172,9 +172,9 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
         }
 
     else:
-        rsitelist_5, enamelist_5, rsite_position_list_5 = rsite_search_func(left_of_Gene, rsitelist,
+        rsitelist_5, enamelist_5, rsite_position_list_5 = find_rsite_locations(left_of_Gene, rsitelist,
                                                                             enamelist, 3, min_homology)
-        rsitelist_3, enamelist_3, rsite_position_list_3 = rsite_search_func(right_of_Gene, rsitelist,
+        rsitelist_3, enamelist_3, rsite_position_list_3 = find_rsite_locations(right_of_Gene, rsitelist,
                                                                             enamelist, 5, min_homology)
 
         start_end_sequences_5UTR = [generate_start_end_sequences(
@@ -213,14 +213,14 @@ def find_compatible_MCS_rsites(MCS, rsitelist, enamelist, full_sequences, backbo
 
     backbone_no_MCS = backbone_no_MCS_3 + backbone_no_MCS_5
 
-    rsitelist_sorted_right, enamelist_sorted_right, _ = rsite_search_func(MCS, rsitelist, enamelist, starting_end=5)
+    rsitelist_sorted_right, enamelist_sorted_right, _ = find_rsite_locations(MCS, rsitelist, enamelist, starting_end=5)
     for i, rsite in enumerate(rsitelist_sorted_right):
         if not any(rsite in full_sequence for full_sequence in full_sequences) and not rsite in backbone_no_MCS:
             rsite1 = rsite
             ename1 = enamelist_sorted_right[i]
             break
 
-    rsitelist_sorted_left, enamelist_sorted_left, _ = rsite_search_func(MCS, rsitelist, enamelist, starting_end=3)
+    rsitelist_sorted_left, enamelist_sorted_left, _ = find_rsite_locations(MCS, rsitelist, enamelist, starting_end=3)
     for i, rsite in enumerate(rsitelist_sorted_left):
         if not any(rsite in full_sequence for full_sequence in full_sequences) and not (rsite in backbone_no_MCS and rsite == rsite1):
             rsite2 = rsite
