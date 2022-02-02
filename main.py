@@ -1,21 +1,25 @@
 import argparse
-import numpy as np
 import re
+import numpy as np
+
 
 def read_from_fsa(fsa_file_path):
+    # Reads a FASTA file and returns the description (header) and the sequence
     if not fsa_file_path:
         return '',''
     try:
         with open(fsa_file_path) as f:
             name = f.readline()[1:-1]
-            code = f.read().replace('\n', '')
-            return name, code.upper()
+            sequence = f.read().replace('\n', '')
+            print(name)
+            print(sequence)
+            return name, sequence.upper()
     except Exception as e:
         print('Unable to read:', fsa_file_path,e)
 
-# Read in and process the enzyme list
-def read_enzyme_list(enzymefile):
 
+def read_enzyme_list(enzymefile):
+    # Reads in and processes the enzyme list
     with open(enzymefile) as file:
         lines=file.readlines()
         enzymes=[line.rstrip() for line in lines]
@@ -49,9 +53,9 @@ def read_enzyme_list(enzymefile):
                             enamelist.append(ename)
     return (np.array(rsitelist), np.array(enamelist))
 
-# Read in the gene file +/- 1000 base pairs and break it up into 3 pieces
-def read_gene_plus_string(Gene_plus):
 
+def read_gene_plus_string(Gene_plus):
+    # Splits gene sequence into 3 pieces: ORF, 1000 bp upstream ("Left_of_gene") and 1000 bp downstream ("Right_of_gene")
     # # Import Gene -+1000 base pairs - clean in the same way
     # with open(genefile, 'r') as file:
     #     Gene_plus = file.read().replace('\n', '')
@@ -68,7 +72,7 @@ def read_gene_plus_string(Gene_plus):
 
 
 def find_rsite_locations(Gene, rsitelist, enamelist, starting_end, min_homology=0):
-
+    # Searches for cutsites from "rsitelist" in a given "Gene" sequence. Starts by ommiting "min_homology" bp from the "starting_end" (either 5 or 3 as in 5' and 3', respectively)
     if starting_end == 5:
         Gene_cut = Gene[min_homology:]
         rsite_position_list = np.array([Gene_cut.find(rsite) for rsite in rsitelist])
@@ -95,9 +99,18 @@ def find_rsite_locations(Gene, rsitelist, enamelist, starting_end, min_homology=
 
 
 def generate_start_end_sequences(left_chunk, right_chunk, rsite_side, rsite_position, rsite, minhomology, alpha, stop_codon_offset=0):
+    # Generates X and alphaX sequences for the cases of tagging genes (at either 5' or 3' end)
+
+    # Splitted in two cases, depending on the position of the cutsite:
+    #rsite_side argument can have 'left' or 'right' values. 
+    #For 5 UTR tagging, 'left' means inside the gene starting from 5' end, 'right' means inside the right 1000 bp
+    #For 3 UTR tagging, 'left' means inside the left 1000 bp, 'right' means inside the gene starting from 3' end
+
+    #stop_codon_offset is used to remove the stop codon of the gene in case we are tagging the 3' end 
+    
 
     if rsite_side not in ['left','right']:
-        raise ValueError('Wrong Gene_side value')
+        raise ValueError('Wrong riste_side value')
 
     if rsite_side == 'left':
         X = left_chunk[rsite_position-minhomology:len(left_chunk)-stop_codon_offset]
@@ -111,10 +124,20 @@ def generate_start_end_sequences(left_chunk, right_chunk, rsite_side, rsite_posi
 
 def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
                  left_of_Gene='', right_of_Gene='', FPGs=[], linker=''):
+    # This is the central function that finds suitable cutsites for the given list of FPGs and the linker
+
+
+    #Modality is used to define the application of the program:
+    # 5 for 5' tagging with given list of FPGs
+    # 3 for 3' taggging with given list of FPGs
+    # 0 for deletion (FPGs neglected)
+
+    #Function returns a dictionary of parameters that describe the cloning 
 
     if modality not in [0, 3, 5]:
         raise ValueError('Wrong starting_position value')
 
+    #5' tagging
     if modality == 5:
 
         rsitelist_gene, enamelist_gene, rsite_position_list_gene = find_rsite_locations(
@@ -128,7 +151,7 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
             left_of_Gene, Gene, 'left', rsite_pos, rsite, min_homology, alpha) for rsite_pos, rsite in zip(rsite_position_list_5TR, rsitelist_5UTR)]
 
         full_sequences = [
-            [start_seq+FPG+linker+end_seq for FPG in FPGs]
+            [start_seq+FPG[:-3]+linker+end_seq for FPG in FPGs] #We don't take the stop codon from FPG
             for start_seq, end_seq in start_end_sequences_gene+start_end_sequences_5UTR
         ]
 
@@ -141,6 +164,7 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
             'start_end_sequences': start_end_sequences_gene+start_end_sequences_5UTR 
         }
 
+    # 3' tagging 
     elif modality == 3:
 
         rsitelist_gene, enamelist_gene, rsite_position_list_gene = find_rsite_locations(
@@ -171,6 +195,7 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
             'start_end_sequences': start_end_sequences_gene+start_end_sequences_3UTR
         }
 
+    # Deletion
     else:
         rsitelist_5, enamelist_5, rsite_position_list_5 = find_rsite_locations(left_of_Gene, rsitelist,
                                                                             enamelist, 3, min_homology)
@@ -229,14 +254,70 @@ def find_compatible_MCS_rsites(MCS, rsitelist, enamelist, full_sequences, backbo
         
     return rsite1, ename1, rsite2, ename2
 
+def  find_additional_cutsites(plasmids, rsitelist, enamelist):
+    # Finds all appropropriate cutsites that could be added between different pieces of the insert in the plasmid (e.g. between the gene and the linker or between the linker and the FPG etc)
+    #a good cutsite has to fullfill three criteria:
+    #1. Divisible by 3 (this could be circuimvented by accomidating the linker length)
+    #2. Does not cut the final plasmids (plural in case of several FPGs)
+    #3. Does not introduce a stop codon
+
+    good_rsite_list = []
+    good_enzyme_list = []
+    for rsite, enzyme in zip(rsitelist, enamelist):
+        if len(rsite)%3 == 0 and dna_to_protein(rsite).count('*') == 0:
+            if not any(rsite in plasmid for plasmid in plasmids):
+                good_rsite_list.append(rsite)
+                good_enzyme_list.append(enzyme)
+
+    return good_enzyme_list, good_rsite_list
+
+
+def dna_to_protein(dna):
+     #Translates DNA into a Protein. it truncates the 3' tail that doesn't make a full codon
+     #STOP is denoted by '*'
+     
+	dna = dna.upper()
+
+	genetic_code = {
+        'ATA':'I', 'ATC':'I', 'ATT':'I', 'ATG':'M',
+        'ACA':'T', 'ACC':'T', 'ACG':'T', 'ACT':'T',
+        'AAC':'N', 'AAT':'N', 'AAA':'K', 'AAG':'K',
+        'AGC':'S', 'AGT':'S', 'AGA':'R', 'AGG':'R',                 
+        'CTA':'L', 'CTC':'L', 'CTG':'L', 'CTT':'L',
+        'CCA':'P', 'CCC':'P', 'CCG':'P', 'CCT':'P',
+        'CAC':'H', 'CAT':'H', 'CAA':'Q', 'CAG':'Q',
+        'CGA':'R', 'CGC':'R', 'CGG':'R', 'CGT':'R',
+        'GTA':'V', 'GTC':'V', 'GTG':'V', 'GTT':'V',
+        'GCA':'A', 'GCC':'A', 'GCG':'A', 'GCT':'A',
+        'GAC':'D', 'GAT':'D', 'GAA':'E', 'GAG':'E',
+        'GGA':'G', 'GGC':'G', 'GGG':'G', 'GGT':'G',
+        'TCA':'S', 'TCC':'S', 'TCG':'S', 'TCT':'S',
+        'TTC':'F', 'TTT':'F', 'TTA':'L', 'TTG':'L',
+        'TAC':'Y', 'TAT':'Y', 'TAA':'*', 'TAG':'*',
+        'TGC':'C', 'TGT':'C', 'TGA':'*', 'TGG':'W',
+    }
+	protein = ''
+
+
+	if(len(dna)%3 != 0):
+		dna = dna[: -(len(dna)%3)]
+
+	for i in range(0, len(dna), 3):
+		code = dna[i:i+3]
+		if(code in genetic_code.keys()):
+			protein += genetic_code[code]
+		else:
+			protein = ''
+			break
+	
+	return protein
 
 def assemble_plasmid(backbone_no_MCS_5, backbone_no_MCS_3, sequence): 
-    # TODO CHECK if backbone_no_MCS_5 + sequence + backbone_no_MCS_3 + backbone_no_MCS_5 bad
     return backbone_no_MCS_5 + sequence + backbone_no_MCS_3
 
 
 def main(args):
-    # Read all the files (1. and 2.)
+    # Read the files (1. and 2.)
     _, backbone = read_from_fsa(args.backbone_path)
     # print('Backbone len:', len(backbone))
 
@@ -257,8 +338,9 @@ def main(args):
     # print('FPG len:', len(FPGs))
 
     rsitelist, enamelist = read_enzyme_list(args.enzyme_path)
-    print(rsitelist[:10], enamelist[:10])
-
+    #print(rsitelist[:10], enamelist[:10])
+    
+    popular_rsitelist, popular_enamelist = read_enzyme_list(args.popular_enzyme_path)
 
     # 3.
     rsite_dict = rsite_search(Gene, rsitelist, enamelist, args.modality, args.alpha,
@@ -280,7 +362,7 @@ def main(args):
 
     for i in range(len(gene_rsitelist_sorted)):
 
-        print('\n')
+        #print('\n')
 
         # 4. and 5.
         rsite0 = gene_rsitelist_sorted[i]
@@ -288,12 +370,13 @@ def main(args):
         rsite_place = rsite_places[i]
         full_sequences = full_sequences_per_rsite[i]
         start_seq, end_seq = start_end_sequences[i]
-        print(i, rsite0, ename0, 'side:',rsite_place)
+        print(i, rsite0, ename0, 'location:',rsite_place)
             
         # check if all full sequences have only one rsite0  
         if any([(full_sequence.count(rsite0) != 1) for full_sequence in full_sequences]):
             print("""Enzyme {} cannot satisfy the conditions.
-            rsite {} is not unique in the full sequence""".format(ename0, rsite0))
+            Restriction site {} is not unique in the assebled insert sequence.""".format(ename0, rsite0))
+            print("##################################################################")
             continue
             
 
@@ -302,30 +385,49 @@ def main(args):
         rsite1, ename1, rsite2, ename2 = find_compatible_MCS_rsites(MCS, rsitelist, enamelist, full_sequences, backbone_no_MCS_5, backbone_no_MCS_3)
         if not rsite1 or not rsite2:
             print("""Enzyme {} cannot satisfy the conditions.
-            good rsites not found in MCS""".format(ename0, rsite1, rsite2))
+            No good cutsites in the MCS.""".format(ename0, rsite1, rsite2))
+            print("##################################################################")
             continue
 
         # 8. 
         full_plasmid = assemble_plasmid(backbone_no_MCS_5, backbone_no_MCS_3, full_sequences[0])
 
-        if full_plasmid.count(rsite0) != 1:
+        if full_plasmid.count(rsite0) > 1:
             print("""Enzyme {} cannot satisfy the conditions.
-            bad backbone for rsite0""".format(ename0, rsite0))
+            It cuts the backbone.""".format(ename0, rsite0))
+            print("##################################################################")
         else:
             if len(compatible_restriction_sites) == 0:
                 optimal_plasmid = full_plasmid
                 MCS_rsites = (rsite1, rsite2)
             compatible_restriction_sites.append((ename0, rsite_place, ename1, ename2))
-            print("""Enzyme {} can be used for cuttin the {}.
+            print("""Enzyme {} can be used for integration into the genome by cutting the {}.
             Enzymes that should be used for cloning inside the plasmid are {}, and {}.""".format(
                 ename0, rsite_place, ename1, ename2
             ))
-            start_name = '5UTR' if args.modality in [5,0] else 'Gene end'
-            end_name = '3UTR' if args.modality in [3,0] else 'Gene start'
-            print("Pieces that should be used for cloning are -- {}:{}, {}:{}".format(
+            start_name = '5` UTR' if args.modality in [5,0] else 'Gene end'
+            end_name = '3` UTR' if args.modality in [3,0] else 'Gene start'
+            print("\nPieces that should be used for cloning are:\n{}: {}\n{}: {}".format(
                 start_name, start_seq, end_name, end_seq
             ))
+            print("\nTotal length of gene chunks that should be subcloned is", str((len(start_seq)+len(end_seq))), ".")
 
+            #12. Find good additonal cutsites to add on the joints between the gene chunks, linker and FPG
+                #Go through the list and check if they are good for use with these sequences
+            if(args.modality != 0):
+                full_plasmids  = [assemble_plasmid(backbone_no_MCS_5, backbone_no_MCS_3, full_sequence) for full_sequence in full_sequences]
+                good_pop_enzymes, good_pop_cutsites = find_additional_cutsites(full_plasmids, popular_rsitelist, popular_enamelist)
+                if(len(good_pop_enzymes)<3):
+                    print("There's no enough popular cutsites that can be added to the existing insert")
+                else:  
+                    #print(good_pop_enzymes)
+                    print("Added the cutsites of 1. {first}, 2. {second} and 3. {third} to the final sequence\n".format(first = good_pop_enzymes[0], second = good_pop_enzymes[1], third = good_pop_enzymes[2]))
+                    if(args.modality == 5):
+                        print("The final insert sequence with the first FPG is {}".format(start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + FPGs[0][:-3] + good_pop_cutsites[2] + end_seq)) #we don't take the stop of the FPG in case of 5' labeling
+                    if(args.modality == 3):
+                        print("The final insert sequence with the first FPG is {}".format(start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + FPGs[0] + good_pop_cutsites[2] + end_seq)) #stop codon is already removed from start_seq in case of 3' labeling
+                    print("Other popular enzymes that can be used are {}".format(good_pop_enzymes[3:]))
+            print("##################################################################")
     return optimal_plasmid, compatible_restriction_sites, MCS_rsites
 
 
@@ -340,6 +442,7 @@ if __name__ == '__main__':
     parser.add_argument("--linker_path", type=str, default='')#, default='./Test_examples/long_linker.fsa', help="")
     parser.add_argument("--modality", type=int)#, default=3, help="")
     parser.add_argument("--enzyme_path", type=str)#, default='./Chris_code/raw_enzyme_list.txt', help='')
+    parser.add_argument("--popular_enzyme_path", type=str)
     parser.add_argument("--FPG_paths", nargs="*", type=str, default=[
         # './Test_examples/CLB2_3p_labeling/mCherry_FPG.fsa',
         # './Test_examples/CLB2_3p_labeling/ymNeonGreen_FPG.fsa',
@@ -350,7 +453,3 @@ if __name__ == '__main__':
     print(args)
 
     main(args)
-
-    # python.exe ./main.py --backbone_path './Test_examples/pETUL_backbone.fsa' --MCS_start_ind 1 --MCS_end_ind 108 --min_homology 70 --alpha 1.4 --Gene_path './Test_examples/GAL4_deletion/GAL4_pm_1000_gene.fsa' --modality 0 --enzyme_path './Chris_code/raw_enzyme_list.txt'
-
-    # python.exe ./main.py --backbone_path './Test_examples/pETUL_backbone.fsa' --MCS_start_ind 1 --MCS_end_ind 108 --min_homology 70 --alpha 1.4 --Gene_path './Test_examples/CLB2_3p_labeling/CLB2_pm_1000.fsa' --linker_path './Test_examples/long_linker.fsa' --modality 5 --enzyme_path './Chris_code/raw_enzyme_list.txt' --FPG_paths './Test_examples/CLB2_3p_labeling/mCherry_FPG.fsa' './Test_examples/CLB2_3p_labeling/ymNeonGreen_FPG.fsa' './Test_examples/CLB2_3p_labeling/ymTq2_FPG.fsa'
