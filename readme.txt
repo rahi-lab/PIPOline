@@ -29,7 +29,7 @@ Example of a call:
     python.exe ./main.py --backbone_path './Test_examples/pETUL_backbone.fsa' --MCS_start_ind 1 --MCS_end_ind 108 --min_homology 70 --alpha 1.4 --Gene_path './Test_examples/GAL4_deletion/GAL4_pm_1000_gene.fsa' --modality 0 --enzyme_path './Test_examples/raw_enzyme_list.txt'
     
     Gene tagging:
-    python.exe ./main.py --backbone_path ./Test_examples/pETUL_backbone.fsa --MCS_start_ind 1 --MCS_end_ind 108 --min_homology 70 --alpha 1.4 --Gene_path ./Test_examples/CLB2_3p_labeling/CLB2_pm_1000.fsa --linker_path ./Test_examples/long_linker.fsa --modality 5 --enzyme_path ./Chris_code/raw_enzyme_list.txt --popular_enzyme_path ./Test_examples/Popular_enzymes.txt --FPG_paths ./Test_examples/CLB2_3p_labeling/mCherry_FPG.fsa ./Test_examples/CLB2_3p_labeling/ymNeonGreen_FPG.fsa ./Test_examples/CLB2_3p_labeling/ymTq2_FPG.fsa
+    python.exe ./main.py --backbone_path ./Test_examples/pETUL_backbone.fsa --MCS_start_ind 1 --MCS_end_ind 108 --min_homology 70 --alpha 1.4 --Gene_path ./Test_examples/CLB2_3p_labeling/CLB2_pm_1000.fsa --linker_path ./Test_examples/long_linker.fsa --modality 5 --enzyme_path ./Test_examples/raw_enzyme_list.txt --popular_enzyme_path ./Test_examples/Popular_enzymes.txt --FPG_paths ./Test_examples/CLB2_3p_labeling/mCherry_FPG.fsa ./Test_examples/CLB2_3p_labeling/ymNeonGreen_FPG.fsa ./Test_examples/CLB2_3p_labeling/ymTq2_FPG.fsa
 
     Note: for Lazar, the '' around sequence location in gene deletion examples are OK (didn't test whether necessary), for Vojislav they're not (the program cannot find the directory).
 
