@@ -71,18 +71,21 @@ def read_gene_plus_string(Gene_plus):
     return (Left_of_gene, Gene, Right_of_gene)
 
 
-def find_rsite_locations(Gene, rsitelist, enamelist, starting_end, min_homology=0):
-    """Searches for cutsites from "rsitelist" in a given "Gene" sequence. Starts by ommiting "min_homology" bp from the "starting_end" (either 5 or 3 as in 5' and 3', respectively)"""
+def find_rsite_locations(sequence, rsitelist, enamelist, starting_end, min_homology=0):
+    """Searches for cutsites from "rsitelist" in a given sequence. 
+    Starts by ommiting "min_homology" bp from the "starting_end" (either 5 or 3 as in 5' and 3', respectively)"""
+    
+    sequence_cut = sequence[min_homology:len(sequence)-min_homology]
+    
     if starting_end == 5:
-        Gene_cut = Gene[min_homology:]
-        rsite_position_list = np.array([Gene_cut.find(rsite) for rsite in rsitelist])
+        rsite_position_list = np.array([sequence_cut.find(rsite) for rsite in rsitelist])
         sorted_inds = np.argsort(rsite_position_list)
-        
+
     elif starting_end == 3:
-        Gene_cut = Gene[:len(Gene)-min_homology]
-        rsite_position_list = np.array([Gene_cut.rfind(rsite) for rsite in rsitelist]) 
+        rsite_position_list = np.array([sequence_cut.rfind(rsite) for rsite in rsitelist]) 
         sorted_inds = np.argsort(-rsite_position_list)
 
+    # TODO Is sorting really needed? as we later sort sequences by the length?
 
     # remove not matched rsites
     rsite_position_list = rsite_position_list[sorted_inds]
@@ -140,44 +143,51 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
     #5' tagging
     if modality == 5:
 
+        Gene_and_right_of_Gene = Gene + right_of_Gene
+
         rsitelist_gene, enamelist_gene, rsite_position_list_gene = find_rsite_locations(
-            Gene, rsitelist, enamelist, 5, min_homology)
+            Gene_and_right_of_Gene, rsitelist, enamelist, 5, min_homology)
         rsitelist_5UTR, enamelist_5UTR, rsite_position_list_5TR = find_rsite_locations(
             left_of_Gene, rsitelist, enamelist, 3, min_homology)
 
         start_end_sequences_gene = [generate_start_end_sequences(
-            left_of_Gene, Gene, 'right', rsite_pos, rsite, min_homology, alpha) for rsite_pos, rsite in zip(rsite_position_list_gene, rsitelist_gene)]
+            left_of_Gene, Gene_and_right_of_Gene, 'right', rsite_pos, rsite, min_homology, alpha) for rsite_pos, rsite in zip(rsite_position_list_gene, rsitelist_gene)]
         start_end_sequences_5UTR = [generate_start_end_sequences(
-            left_of_Gene, Gene, 'left', rsite_pos, rsite, min_homology, alpha) for rsite_pos, rsite in zip(rsite_position_list_5TR, rsitelist_5UTR)]
+            left_of_Gene, Gene_and_right_of_Gene, 'left', rsite_pos, rsite, min_homology, alpha) for rsite_pos, rsite in zip(rsite_position_list_5TR, rsitelist_5UTR)]
 
         full_sequences = [
             [start_seq+FPG[:-3]+linker+end_seq for FPG in FPGs] #We don't take the stop codon from FPG
             for start_seq, end_seq in start_end_sequences_gene+start_end_sequences_5UTR
         ]
+        real_alphas = [len(alphaX)/float(len(X)) for alphaX,X in start_end_sequences_gene] + \
+            [len(alphaX)/float(len(X)) for X,alphaX in start_end_sequences_5UTR]
 
         return_dict = {
             'rsitelist': np.append(rsitelist_gene, rsitelist_5UTR),
             'enamelist': np.append(enamelist_gene, enamelist_5UTR),
             'rsite_position_list': np.append(rsite_position_list_gene, rsite_position_list_5TR),
-            'rsite_places': ['rsite in gene']*len(rsitelist_gene)+['rsite in 5`UTR']*len(rsitelist_5UTR),
+            'rsite_places': ['rsite in gene+3`UTR']*len(rsitelist_gene)+['rsite in 5`UTR']*len(rsitelist_5UTR),
             'full_sequences': full_sequences,
-            'start_end_sequences': start_end_sequences_gene+start_end_sequences_5UTR 
+            'start_end_sequences': start_end_sequences_gene+start_end_sequences_5UTR,
+            'real_alphas': real_alphas
         }
 
     # 3' tagging 
     elif modality == 3:
 
+        left_of_Gene_and_Gene = left_of_Gene + Gene
+
         rsitelist_gene, enamelist_gene, rsite_position_list_gene = find_rsite_locations(
-            Gene, rsitelist, enamelist, 3, min_homology)
+            left_of_Gene_and_Gene, rsitelist, enamelist, 3, min_homology)
         rsitelist_3UTR, enamelist_3UTR, rsite_position_list_3UTR = find_rsite_locations(
             right_of_Gene, rsitelist, enamelist, 5, min_homology)
 
         start_end_sequences_gene = [
-            generate_start_end_sequences(Gene, right_of_Gene, 'left', rsite_pos, rsite, min_homology, alpha, stop_codon_offset=3)
+            generate_start_end_sequences(left_of_Gene_and_Gene, right_of_Gene, 'left', rsite_pos, rsite, min_homology, alpha, stop_codon_offset=3)
             for rsite_pos, rsite in zip(rsite_position_list_gene, rsitelist_gene)
         ]
         start_end_sequences_3UTR = [
-            generate_start_end_sequences(Gene, right_of_Gene, 'right', rsite_pos, rsite, min_homology, alpha, stop_codon_offset=3)
+            generate_start_end_sequences(left_of_Gene_and_Gene, right_of_Gene, 'right', rsite_pos, rsite, min_homology, alpha, stop_codon_offset=3)
             for rsite_pos, rsite in zip(rsite_position_list_3UTR, rsitelist_3UTR)
         ]
 
@@ -185,14 +195,17 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
             [start_seq+linker+FPG+end_seq for FPG in FPGs]
             for start_seq, end_seq in start_end_sequences_gene+start_end_sequences_3UTR
         ]
+        real_alphas = [len(alphaX)/float(len(X)) for X,alphaX in start_end_sequences_gene] + \
+            [len(alphaX)/float(len(X)) for alphaX,X in start_end_sequences_3UTR]
 
         return_dict = {
             'rsitelist': np.append(rsitelist_gene, rsitelist_3UTR),
             'enamelist': np.append(enamelist_gene, enamelist_3UTR),
             'rsite_position_list': np.append(rsite_position_list_gene, rsite_position_list_3UTR),
-            'rsite_places': ['rsite in gene']*len(rsitelist_gene)+['rsite in 3`UTR']*len(rsitelist_3UTR),
+            'rsite_places': ['rsite in 5`UTR+gene']*len(rsitelist_gene)+['rsite in 3`UTR']*len(rsitelist_3UTR),
             'full_sequences': full_sequences,
-            'start_end_sequences': start_end_sequences_gene+start_end_sequences_3UTR
+            'start_end_sequences': start_end_sequences_gene+start_end_sequences_3UTR,
+            'real_alphas': real_alphas
         }
 
     # Deletion
@@ -211,6 +224,8 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
             [start_seq+end_seq]
             for start_seq, end_seq in start_end_sequences_5UTR+start_end_sequences_3UTR
         ]
+        real_alphas = [len(alphaX)/len(X) for X,alphaX in start_end_sequences_5UTR] + \
+            [len(alphaX)/len(X) for alphaX,X in start_end_sequences_3UTR]
 
         return_dict = {
             'rsitelist': np.append(rsitelist_5, rsitelist_3),
@@ -218,7 +233,8 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
             'rsite_position_list': np.append(rsite_position_list_5, rsite_position_list_3),
             'rsite_places': ['rsite in 5`']*len(rsitelist_5)+['rsite in 3`']*len(rsitelist_3),
             'full_sequences': full_sequences,
-            'start_end_sequences': start_end_sequences_5UTR+start_end_sequences_3UTR
+            'start_end_sequences': start_end_sequences_5UTR+start_end_sequences_3UTR,
+            'real_alphas': real_alphas
         }
 
     full_sequences_per_rsite = return_dict['full_sequences']
@@ -351,17 +367,15 @@ def main(args):
     rsite_places = rsite_dict['rsite_places'] 
     full_sequences_per_rsite = rsite_dict['full_sequences']
     start_end_sequences = rsite_dict['start_end_sequences']
-    # print(gene_rsitelist_sorted, gene_enamelist_sorted, gene_rsite_position_list_sorted, rsite_places)
+    real_alphas = rsite_dict['real_alphas']
 
     compatible_restriction_sites = []
     optimal_plasmid = ''
     MCS_rsites = []
 
-    # print([len(x[0]) for x in full_sequences_per_rsite])
+    print("\n\n##################################################################\n\n")
 
     for i in range(len(gene_rsitelist_sorted)):
-
-        #print('\n')
 
         # 4. and 5.
         rsite0 = gene_rsitelist_sorted[i]
@@ -369,13 +383,14 @@ def main(args):
         rsite_place = rsite_places[i]
         full_sequences = full_sequences_per_rsite[i]
         start_seq, end_seq = start_end_sequences[i]
+        real_alpha = real_alphas[i]
         print(str(i+1), rsite0, ename0, 'location:',rsite_place)
             
         # check if all full sequences have only one rsite0  
         if any([(full_sequence.count(rsite0) != 1) for full_sequence in full_sequences]):
             print("""Enzyme {} cannot satisfy the conditions.
             Restriction site {} is not unique in the assebled insert sequence.""".format(ename0, rsite0))
-            print("##################################################################")
+            print("\n\n##################################################################\n\n")
             continue
             
 
@@ -385,7 +400,7 @@ def main(args):
         if not rsite1 or not rsite2:
             print("""Enzyme {} cannot satisfy the conditions.
             No good cutsites in the MCS.""".format(ename0, rsite1, rsite2))
-            print("##################################################################")
+            print("\n\n##################################################################\n\n")
             continue
 
         # 8. 
@@ -394,7 +409,7 @@ def main(args):
         if full_plasmid.count(rsite0) > 1:
             print("""Enzyme {} cannot satisfy the conditions.
             It cuts the backbone.""".format(ename0, rsite0))
-            print("##################################################################")
+            print("\n\n##################################################################\n\n")
         else:
             if len(compatible_restriction_sites) == 0:
                 optimal_plasmid = full_plasmid
@@ -409,6 +424,7 @@ def main(args):
             print("\nPieces that should be used for cloning are:\n{}: {}\n{}: {}".format(
                 start_name, start_seq, end_name, end_seq
             ))
+            print("\nDesired alpha: {}, Realized alpha: {:.2}".format(args.alpha, real_alpha))
             print("\nTotal length of gene chunks that should be subcloned is", str((len(start_seq)+len(end_seq))))
 
             #12. Find good additonal cutsites to add on the joints between the gene chunks, linker and FPG
@@ -426,7 +442,7 @@ def main(args):
                     if(args.modality == 3):
                         print("The final insert sequence with the first FPG: {}".format(rsite1 + start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + FPGs[0] + good_pop_cutsites[2] + end_seq + rsite2)) #stop codon is already removed from start_seq in case of 3' labeling
                     print("\nOther popular enzymes that can be used are {}".format(good_pop_enzymes[3:]))
-            print("##################################################################")
+            print("\n\n##################################################################\n\n")
     return optimal_plasmid, compatible_restriction_sites, MCS_rsites
 
 
