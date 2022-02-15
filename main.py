@@ -92,8 +92,7 @@ def find_rsite_locations(sequence, rsitelist, enamelist, starting_end, min_homol
     rsite_position_list = rsite_position_list[sorted_inds]
     matched_inds = (rsite_position_list != -1)
     rsite_position_list = rsite_position_list[matched_inds]
-    if starting_end == 5:
-        rsite_position_list += min_homology
+    rsite_position_list += min_homology
 
     # apply sort and remove inds to rsitelist and enamelist
     rsitelist = rsitelist[sorted_inds][matched_inds]
@@ -121,7 +120,7 @@ def generate_start_end_sequences(left_chunk, right_chunk, rsite_side, rsite_posi
         alphaX = right_chunk[:int(alpha*len(X))]
         return X, alphaX
     else:
-        X = right_chunk[:rsite_position+len(rsite)+minhomology]
+        X = right_chunk[:rsite_position+minhomology]
         alphaX = left_chunk[-int(alpha*len(X)):len(left_chunk)-stop_codon_offset]
         return alphaX, X
 
