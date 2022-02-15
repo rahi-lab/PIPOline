@@ -13,6 +13,7 @@ def read_from_fsa(fsa_file_path):
             sequence = f.read().replace('\n', '')
             print(name)
             print(sequence)
+            print('Length:', len(sequence))
             return name, sequence.upper()
     except Exception as e:
         print('Unable to read:', fsa_file_path,e)
@@ -331,28 +332,28 @@ def assemble_plasmid(backbone_no_MCS_5, backbone_no_MCS_3, sequence):
 
 
 def main(args):
-    # Read the files (1. and 2.)
-    _, backbone = read_from_fsa(args.backbone_path)
-    # print('Backbone len:', len(backbone))
 
+    # Read the files (1. and 2.)
+    print('\nPIPOline by Stojkovic, Gligorovski, Rahi\n\n********** Reading input files\n\nVector backbone:')
+    _, backbone = read_from_fsa(args.backbone_path)
+    
+    print('\nMultiple cloning site extracted from vector backbone:')
     MCS = backbone[args.MCS_start_ind-1:args.MCS_end_ind]
+    print(MCS,'\nLength:', len(MCS))
     backbone_no_MCS_5 = backbone[0:args.MCS_start_ind-1]
     backbone_no_MCS_3 = backbone[args.MCS_end_ind:]
-    # print('MCS len', len(MCS))
 
+    print('\nLinker:')
     _, linker = read_from_fsa(args.linker_path)
-    # print('Linker len:', len(linker))
+    
+    print('\nGene sequence +/- 1000 bps:')
     _, Gene_plus = read_from_fsa(args.Gene_path)
-    # print('Gene plus len:', len(Gene_plus))
-
     left_of_Gene, Gene, right_of_Gene = read_gene_plus_string(Gene_plus)
-    # print('Gene len:', len(Gene))
 
+    print('\nFluorescent protein genes:')
     FPGs = [read_from_fsa(path)[1] for path in args.FPG_paths] if len(args.FPG_paths) else []
-    # print('FPG len:', len(FPGs))
 
     rsitelist, enamelist = read_enzyme_list(args.enzyme_path)
-    #print(rsitelist[:10], enamelist[:10])
     
     if(args.modality == 5 or args.modality == 3):
         popular_rsitelist, popular_enamelist = read_enzyme_list(args.popular_enzyme_path)
@@ -368,6 +369,7 @@ def main(args):
     full_sequences_per_rsite = rsite_dict['full_sequences']
     start_end_sequences = rsite_dict['start_end_sequences']
     real_alphas = rsite_dict['real_alphas']
+    print('\n',gene_rsitelist_sorted, gene_enamelist_sorted, gene_rsite_position_list_sorted, rsite_places,'\n')
 
     compatible_restriction_sites = []
     optimal_plasmid = ''
@@ -389,8 +391,16 @@ def main(args):
         # check if all full sequences have only one rsite0  
         if any([(full_sequence.count(rsite0) != 1) for full_sequence in full_sequences]):
             print("""Enzyme {} cannot satisfy the conditions.
-            Restriction site {} is not unique in the assebled insert sequence.""".format(ename0, rsite0))
-            print("\n\n##################################################################\n\n")
+            Restriction site {} is not unique in the assembled insert sequence.""".format(ename0, rsite0))
+            print("##################################################################")
+            
+            start_name = '5` UTR' if args.modality in [5,0] else 'Gene end'
+            end_name = '3` UTR' if args.modality in [3,0] else 'Gene start'
+            print("\nPieces that should be used for cloning are:\n{}: {}\n{}: {}".format(
+                start_name, start_seq, end_name, end_seq
+            ))
+            print("\nTotal length of gene chunks that should be subcloned is", str((len(start_seq)+len(end_seq))))
+            
             continue
             
 
@@ -419,6 +429,7 @@ def main(args):
             Enzymes that should be used for cloning inside the plasmid are {}, and {}.""".format(
                 ename0, rsite_place, ename1, ename2
             ))
+            
             start_name = '5` UTR' if args.modality in [5,0] else 'Gene end'
             end_name = '3` UTR' if args.modality in [3,0] else 'Gene start'
             print("\nPieces that should be used for cloning are:\n{}: {}\n{}: {}".format(
@@ -465,6 +476,6 @@ if __name__ == '__main__':
     ], help="")
 
     args = parser.parse_args()
-    print(args)
+#    print(args)
 
     main(args)
