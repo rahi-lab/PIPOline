@@ -166,7 +166,7 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
             'rsitelist': np.append(rsitelist_gene, rsitelist_5UTR),
             'enamelist': np.append(enamelist_gene, enamelist_5UTR),
             'rsite_position_list': np.append(rsite_position_list_gene, rsite_position_list_5TR),
-            'rsite_places': ['rsite in gene+3`UTR']*len(rsitelist_gene)+['rsite in 5`UTR']*len(rsitelist_5UTR),
+            'rsite_places': ['in gene+3`UTR']*len(rsitelist_gene)+['in 5`UTR']*len(rsitelist_5UTR),
             'full_sequences': full_sequences,
             'start_end_sequences': start_end_sequences_gene+start_end_sequences_5UTR,
             'real_alphas': real_alphas
@@ -202,7 +202,7 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
             'rsitelist': np.append(rsitelist_gene, rsitelist_3UTR),
             'enamelist': np.append(enamelist_gene, enamelist_3UTR),
             'rsite_position_list': np.append(rsite_position_list_gene, rsite_position_list_3UTR),
-            'rsite_places': ['rsite in 5`UTR+gene']*len(rsitelist_gene)+['rsite in 3`UTR']*len(rsitelist_3UTR),
+            'rsite_places': ['in 5`UTR+gene']*len(rsitelist_gene)+['in 3`UTR']*len(rsitelist_3UTR),
             'full_sequences': full_sequences,
             'start_end_sequences': start_end_sequences_gene+start_end_sequences_3UTR,
             'real_alphas': real_alphas
@@ -231,7 +231,7 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
             'rsitelist': np.append(rsitelist_5, rsitelist_3),
             'enamelist': np.append(enamelist_5, enamelist_3),
             'rsite_position_list': np.append(rsite_position_list_5, rsite_position_list_3),
-            'rsite_places': ['rsite in 5`']*len(rsitelist_5)+['rsite in 3`']*len(rsitelist_3),
+            'rsite_places': ['in 5`']*len(rsitelist_5)+['in 3`']*len(rsitelist_3),
             'full_sequences': full_sequences,
             'start_end_sequences': start_end_sequences_5UTR+start_end_sequences_3UTR,
             'real_alphas': real_alphas
@@ -333,7 +333,7 @@ def assemble_plasmid(backbone_no_MCS_5, backbone_no_MCS_3, sequence):
 def main(args):
 
     # Read the files (1. and 2.)
-    print('\nPIPOline by Stojkovic, Gligorovski, Rahi\n\n********** Reading input files\n\nVector backbone:')
+    print('\n\n\nPIPOline by Stojkovic, Gligorovski, Rahi\n\n\n***************************\n********** Read input files\n\nVector backbone:')
     _, backbone = read_from_fsa(args.backbone_path)
     
     print('\nMultiple cloning site extracted from vector backbone:')
@@ -345,7 +345,7 @@ def main(args):
     print('\nLinker:')
     _, linker = read_from_fsa(args.linker_path)
     
-    print('\nGene sequence +/- 1000 bps:')
+    print('\nGene-of-interest sequence (ORF +/- 1000 bps):')
     _, Gene_plus = read_from_fsa(args.Gene_path)
     left_of_Gene, Gene, right_of_Gene = read_gene_plus_string(Gene_plus)
 
@@ -368,13 +368,13 @@ def main(args):
     full_sequences_per_rsite = rsite_dict['full_sequences']
     start_end_sequences = rsite_dict['start_end_sequences']
     real_alphas = rsite_dict['real_alphas']
-    print('\n',gene_rsitelist_sorted, gene_enamelist_sorted, gene_rsite_position_list_sorted, rsite_places,'\n')
+    #print('\n',gene_rsitelist_sorted, gene_enamelist_sorted, gene_rsite_position_list_sorted, rsite_places)
 
     compatible_restriction_sites = []
     optimal_plasmid = ''
     MCS_rsites = []
 
-    print("\n\n##################################################################\n\n")
+    print("\n\n\n*************************************************************************************************************\n********** Loop over all restriction sites that can be used for linearizing the final plasmid for integration")
 
     for i in range(len(gene_rsitelist_sorted)):
 
@@ -383,22 +383,22 @@ def main(args):
         ename0 = gene_enamelist_sorted[i]
         rsite_place = rsite_places[i]
         full_sequences = full_sequences_per_rsite[i]
+        gene_rsite_position = gene_rsite_position_list_sorted[i]
         start_seq, end_seq = start_end_sequences[i]
         real_alpha = real_alphas[i]
-        print(str(i+1), rsite0, ename0, 'location:',rsite_place)
+        print("""\n\n****** Testing restriction site {}, sequence: {}, enzyme: {}, location: {} {}""".format(str(i+1),rsite0,ename0,gene_rsite_position,rsite_place))
             
         # check if all full sequences have only one rsite0  
         if any([(full_sequence.count(rsite0) != 1) for full_sequence in full_sequences]):
-            print("""Enzyme {} cannot satisfy the conditions.
-            Restriction site {} is not unique in the assembled insert sequence.""".format(ename0, rsite0))
-            print("##################################################################")
+            print("""\nRestriction site cannot be used for linearizing and integrating the plasmid because {} is not unique in the assembled insert sequence.""".format(rsite0))
             
-            start_name = '5` UTR' if args.modality in [5,0] else 'Gene end'
-            end_name = '3` UTR' if args.modality in [3,0] else 'Gene start'
-            print("\nPieces that should be used for cloning are:\n{}: {}\n{}: {}".format(
-                start_name, start_seq, end_name, end_seq
-            ))
-            print("\nTotal length of gene chunks that should be subcloned is", str((len(start_seq)+len(end_seq))))
+            # SJR: It is not clear to me why the following would be printed if this restriction site is unavailable
+#            start_name = '5` UTR' if args.modality in [5,0] else 'Gene end'
+#            end_name = '3` UTR' if args.modality in [3,0] else 'Gene start'
+#            print("\nPieces that should be used for cloning are:\n{}: {}\n{}: {}".format(
+#                start_name, start_seq, end_name, end_seq
+#            ))
+#            print("\nTotal length of gene chunks that should be subcloned is", str((len(start_seq)+len(end_seq))))
             
             continue
             
@@ -407,35 +407,30 @@ def main(args):
         # Search for the most outer CS from MCS that are not in 4. 
         rsite1, ename1, rsite2, ename2 = find_compatible_MCS_rsites(MCS, rsitelist, enamelist, full_sequences, backbone_no_MCS_5, backbone_no_MCS_3)
         if not rsite1 or not rsite2:
-            print("""Enzyme {} cannot satisfy the conditions.
-            No good cutsites in the MCS.""".format(ename0, rsite1, rsite2))
-            print("\n\n##################################################################\n\n")
+            print("""\nRestriction site cannot be used for linearizing and integrating the plasmid because no good cutsites in the MCS???""".format(ename0, rsite1, rsite2))
             continue
 
         # 8. 
         full_plasmid = assemble_plasmid(backbone_no_MCS_5, backbone_no_MCS_3, rsite1 + full_sequences[0] + rsite2)
 
         if full_plasmid.count(rsite0) > 1:
-            print("""Enzyme {} cannot satisfy the conditions.
-            It cuts the backbone.""".format(ename0, rsite0))
-            print("\n\n##################################################################\n\n")
+            print("""\nRestriction site cannot be used for linearizing and integrating the plasmid because {} cuts the backbone.""".format(ename0, rsite0))
         else:
             if len(compatible_restriction_sites) == 0:
                 optimal_plasmid = full_plasmid
                 MCS_rsites = (rsite1, rsite2)
             compatible_restriction_sites.append((ename0, rsite_place, ename1, ename2))
-            print("""Enzyme {} can be used for integration into the genome by cutting the {}.
-            Enzymes that should be used for cloning inside the plasmid are {}, and {}.""".format(
-                ename0, rsite_place, ename1, ename2
+            print("""\nRestricion site {} {} cut by enzyme {} can be used for linearizing and integrating the plasmid.\n\nFor cloning the insert into the backbone, enzymes {} and {} can be used.""".format(
+                rsite0, rsite_place, ename0, ename1, ename2
             ))
             
             start_name = '5` UTR' if args.modality in [5,0] else 'Gene end'
             end_name = '3` UTR' if args.modality in [3,0] else 'Gene start'
-            print("\nPieces that should be used for cloning are:\n{}: {}\n{}: {}".format(
+            print("\nInsert will be constructed with the following sequences from the gene-of-interest:\n{}:\n{}\n{}:\n{}".format(
                 start_name, start_seq, end_name, end_seq
             ))
-            print("\nDesired alpha: {}, Realized alpha: {:.2}".format(args.alpha, real_alpha))
-            print("\nTotal length of gene chunks that should be subcloned is", str((len(start_seq)+len(end_seq))))
+            print("\nDesired alpha: {}, Realized alpha: {:.2} (which can be less than the desired alpha if the gene-of-interest sequence is not long enough to find homology for the popout)".format(args.alpha, real_alpha))
+            print("\nTotal length of sequences from the gene-of-interest going into the insert is:", str((len(start_seq)+len(end_seq))))
 
             #12. Find good additonal cutsites to add on the joints between the gene chunks, linker and FPG
                 #Go through the list and check if they are good for use with these sequences
@@ -443,16 +438,16 @@ def main(args):
                 full_plasmids  = [assemble_plasmid(backbone_no_MCS_5, backbone_no_MCS_3, rsite1 + full_sequence + rsite2) for full_sequence in full_sequences]
                 good_pop_enzymes, good_pop_cutsites = find_additional_cutsites(full_plasmids, popular_rsitelist, popular_enamelist)
                 if(len(good_pop_enzymes)<3):
-                    print("There's no enough popular cutsites that can be added to the existing insert")
+                    print("\nThere are not enough popular restriction enzymes in your list to assemble the insert.")
                 else:  
                     #print(good_pop_enzymes)
-                    print("Added the cutsites of 1. {first}, 2. {second} and 3. {third} to the final sequence\n".format(first = good_pop_enzymes[0], second = good_pop_enzymes[1], third = good_pop_enzymes[2]))
+                    print("\nAdded the cut sites 1. {first}, 2. {second} and 3. {third} between the gene-of-interest sequences, the linker, and the fluorescent protein to create the final insert sequence".format(first = good_pop_enzymes[0], second = good_pop_enzymes[1], third = good_pop_enzymes[2]))
                     if(args.modality == 5):
-                        print("The final insert sequence with the first FPG: {}".format(rsite1 + start_seq + good_pop_cutsites[0] + FPGs[0][:-3] + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2)) #we don't take the stop of the FPG in case of 5' labeling
+                        print("\nThe final insert sequence with the first FPG:\n{}".format(rsite1 + start_seq + good_pop_cutsites[0] + FPGs[0][:-3] + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2)) #we don't take the stop of the FPG in case of 5' labeling
                     if(args.modality == 3):
-                        print("The final insert sequence with the first FPG: {}".format(rsite1 + start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + FPGs[0] + good_pop_cutsites[2] + end_seq + rsite2)) #stop codon is already removed from start_seq in case of 3' labeling
-                    print("\nOther popular enzymes that can be used are {}".format(good_pop_enzymes[3:]))
-            print("\n\n##################################################################\n\n")
+                        print("\nThe final insert sequence with the first FPG:\n{}".format(rsite1 + start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + FPGs[0] + good_pop_cutsites[2] + end_seq + rsite2)) #stop codon is already removed from start_seq in case of 3' labeling
+                    print("\nOther popular enzymes that can be used in place of the three listed above are {}".format(good_pop_enzymes[3:]))
+            #print("\n\n##################################################################\n\n")
     return optimal_plasmid, compatible_restriction_sites, MCS_rsites
 
 
