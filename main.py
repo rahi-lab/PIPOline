@@ -268,7 +268,6 @@ def find_compatible_MCS_rsites(MCS, rsitelist, enamelist, full_sequences, backbo
     rsitelist_sorted_left, enamelist_sorted_left, _ = find_rsite_locations(MCS, rsitelist, enamelist, starting_end=3)
     for i, rsite in enumerate(rsitelist_sorted_left):
         if not any(rsite in full_sequence for full_sequence in full_sequences) and not rsite in (backbone_no_MCS_5 + MCS[:MCS.find(rsite1)] + MCS[MCS.find(rsite)+ len(rsite):] + backbone_no_MCS_3):
-            print(backbone_no_MCS_5 + MCS[:MCS.find(rsite1)] + MCS[MCS.find(rsite)+ len(rsite):] + backbone_no_MCS_3)
             rsite2 = rsite
             ename2 = enamelist_sorted_left[i]
             break
@@ -376,6 +375,7 @@ def main(args):
 
     compatible_restriction_sites = []
     optimal_plasmid = ''
+    optimal_plasmid_saved = 0 #a flag that ensures that we save the optimal plasmid only the first time we find it 
     MCS_rsites = []
 
     print("\n\n\n*************************************************************************************************************\n********** Loop over all restriction sites that can be used for linearizing the final plasmid for integration")
@@ -394,32 +394,30 @@ def main(args):
             
         # check if all full sequences have only one rsite0  
         if any([(full_sequence.count(rsite0) != 1) for full_sequence in full_sequences]):
-            print("""\nRestriction site cannot be used for linearizing and integrating the plasmid because {} is not unique in the insert sequence.""".format(rsite0))
+            print("""\nEnzyme {} cannot be used for linearizing and integrating the plasmid because {} is not unique in the insert sequence.""".format(ename0, rsite0))
             continue
             
 
         # 7.
         # Search for the most outer CS from MCS that are not in 4. 
         rsite1, ename1, rsite2, ename2 = find_compatible_MCS_rsites(MCS, rsitelist, enamelist, full_sequences, backbone_no_MCS_5, backbone_no_MCS_3)
-        print(rsite1)
-        print(rsite2)
+
         if not rsite1 or not rsite2:
-            print("""\n There are no good cutsites in the MCS to clone the insert which would use this cutsite.""".format(ename0, rsite1, rsite2))
+            print("""\n There are no good cutsites in the MCS to clone the insert which would use {} cutsite {}.""".format(ename0, rsite0))
             continue
 
         # 8. 
-        #find the 5' part of the MCS that is left after cutting the backbone with rsite1, cutsite not included
+        #find the 5' part of the MCS that is left after cutting the backbone with rsite1, cutsite rsite1 itself not included
         cut_MCS_5 = MCS[:MCS.find(rsite1)]
-        #find the 3' part of the MCS that is left after cutting the backbone with rsite2, cutsite not included
+        #find the 3' part of the MCS that is left after cutting the backbone with rsite2, cutsite rsite2 itself not included
         cut_MCS_3 = MCS[MCS.find(rsite2)+len(rsite2):]
         
         full_plasmid = assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + full_sequences[0] + rsite2)
 
         if full_plasmid.count(rsite0) > 1:
-            print("""\n Insert cannot be cloned because {} cuts the backbone part of the vector after insert integration.""".format(ename0, rsite0))
+            print("""\n Insert cannot be cloned because {}, {} cuts the backbone part of the vector after insert integration.""".format(ename0, rsite0))
         else:
             if len(compatible_restriction_sites) == 0:
-                optimal_plasmid = full_plasmid
                 MCS_rsites = (rsite1, rsite2)
             compatible_restriction_sites.append((ename0, rsite_place, ename1, ename2))
             print("""\nRestricion site {} {} cut by enzyme {} can be used for linearizing and integrating the plasmid.\n\nFor cloning the insert into the backbone, restriction sites {} (enzyme {}) and restriction site {} (enzyme {}) can be used.""".format(
@@ -437,24 +435,50 @@ def main(args):
             #12. Find good additonal cutsites to add on the joints between the gene chunks, linker and FPG
                 #Go through the list and check if they are good for use with these sequences
             if(args.modality != 0):
+
+                #to construct the optimal plasmid, around the FPG side of the two cutsites that surround it, add placeholder sequence to ensure high digestion efficency
+                placeholder_code = 'GGT' #glycine code (but will be cut out when inserting FPG so in principle doesn't matter)
                 full_plasmids  = [assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + full_sequence + rsite2) for full_sequence in full_sequences]
                 good_pop_enzymes, good_pop_cutsites = find_additional_cutsites(full_plasmids, popular_rsitelist, popular_enamelist)
+                
                 if(len(good_pop_enzymes)<3):
                     print("\nThere are not enough popular restriction enzymes in your list to assemble the insert.")
+                
                 else:  
                     #print(good_pop_enzymes)
                     print("\nAdded the cut sites 1. {first}, 2. {second} and 3. {third} between the gene-of-interest sequences, the linker, and the fluorescent protein to create the final insert sequence".format(first = good_pop_enzymes[0], second = good_pop_enzymes[1], third = good_pop_enzymes[2]))
                     if(args.modality == 5):
-                        print("\nThe final insert sequence with the first FPG:\n{}".format(rsite1 + start_seq + good_pop_cutsites[0] + FPGs[0][:-3] + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2)) #we don't take the stop of the FPG in case of 5' labeling
+                        optimal_plasmid = assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + start_seq + good_pop_cutsites[0] + placeholder_code + placeholder_code + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2)
+                        print('\n The final insert sequence with the placeholder sequence (two glycines codes) instead of FPG sequence:\n{}'.format(rsite1 + start_seq + good_pop_cutsites[0] + placeholder_code + placeholder_code + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2))
+                        #old printing with the first FPG sequence:
+                        #print("\nThe final insert sequence with the first FPG:\n{}".format(rsite1 + start_seq + good_pop_cutsites[0] + FPGs[0][:-3] + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2)) #we don't take the stop of the FPG in case of 5' labeling
+                        if not optimal_plasmid_saved and args.assembled_plasmid_name != None:
+                            with open(args.assembled_plasmid_name, 'w') as f:
+                                f.write('>Plasmid for N-terminal tagging of {} with fluorescent proteins. Can be integrated into the budding yeast genome using {}, {} cutsite. To ensure high-efficency digestion during FPG cloning, there is a placeholder sequence between the gene piece and the linker'.format(args.Gene_path.split('/')[-1][0:4], ename0, rsite0))
+                                f.write('\n')
+                                f.write(optimal_plasmid)
+                            f.close()
+                            optimal_plasmid_saved = 1
                     if(args.modality == 3):
-                        print("\nThe final insert sequence with the first FPG:\n{}".format(rsite1 + start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + FPGs[0] + good_pop_cutsites[2] + end_seq + rsite2)) #stop codon is already removed from start_seq in case of 3' labeling
+                        optimal_plasmid = assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + placeholder_code + placeholder_code + good_pop_cutsites[2] + end_seq + rsite2)
+                        print('\n The final insert sequence with the placeholder sequence (two glycines codes) instead of FPG:\n{}'.format(rsite1 + start_seq + good_pop_cutsites[0] + placeholder_code + placeholder_code + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2))
+
+                        if not optimal_plasmid_saved and args.assembled_plasmid_name != None:
+                            with open(args.assembled_plasmid_name, 'w') as f:
+                                f.write('>Plasmid for C-terminal tagging of {} with fluorescent proteins. Can be integrated into the budding yeast genome using {}, {} cutsite. To ensure high-efficency digestion during FPG cloning, there is a placeholder sequence between the gene piece and the linker'.format(args.Gene_path.split('/')[-1][0:4], ename0, rsite0))
+                                f.write('\n')
+                                f.write(optimal_plasmid)
+                            f.close()
+                            optimal_plasmid_saved = 1
+                        #old printing with the first FPG sequence
+                        #print("\nThe final insert sequence with the first FPG:\n{}".format(rsite1 + start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + FPGs[0] + good_pop_cutsites[2] + end_seq + rsite2)) #stop codon is already removed from start_seq in case of 3' labeling
                     print("\nOther popular enzymes that can be used in place of the three listed above are {}".format(good_pop_enzymes[3:]))
             #print("\n\n##################################################################\n\n")
     return optimal_plasmid, compatible_restriction_sites, MCS_rsites
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Smart pop out arguments")
+    parser = argparse.ArgumentParser(description="PIPOline arguments")
     parser.add_argument("--backbone_path", type=str)#, default='./Test_examples/pETUL_backbone.fsa', help="")
     parser.add_argument("--MCS_start_ind", type=int)#, default=1, help="")
     parser.add_argument("--MCS_end_ind", type=int)#, default=108, help="")
@@ -470,6 +494,7 @@ if __name__ == '__main__':
         # './Test_examples/CLB2_3p_labeling/ymNeonGreen_FPG.fsa',
         # './Test_examples/CLB2_3p_labeling/ymTq2_FPG.fsa'
     ], help="")
+    parser.add_argument("--assembled_plasmid_name", type = str)
 
     args = parser.parse_args()
 #    print(args)
