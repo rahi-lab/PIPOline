@@ -415,7 +415,7 @@ def main(args):
         full_plasmid = assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + full_sequences[0] + rsite2)
 
         if full_plasmid.count(rsite0) > 1:
-            print("""\n Insert cannot be cloned because {}, {} cuts the backbone part of the vector after insert integration.""".format(ename0, rsite0))
+            print("""\nInsert cannot be used because {} (restriction site {}) can cut the backbone after insert integration.""".format(ename0, rsite0))
         else:
             if len(compatible_restriction_sites) == 0:
                 MCS_rsites = (rsite1, rsite2)
@@ -437,7 +437,7 @@ def main(args):
             if(args.modality != 0):
 
                 #to construct the optimal plasmid, around the FPG side of the two cutsites that surround it, add placeholder sequence to ensure high digestion efficency
-                placeholder_code = 'GGT' #glycine code (but will be cut out when inserting FPG so in principle doesn't matter)
+                placeholder_code = 'GGTGGC' #two glycine codons (but will be cut out when cloning in FPG so in principle doesn't matter)
                 full_plasmids  = [assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + full_sequence + rsite2) for full_sequence in full_sequences]
                 good_pop_enzymes, good_pop_cutsites = find_additional_cutsites(full_plasmids, popular_rsitelist, popular_enamelist)
                 
@@ -448,8 +448,8 @@ def main(args):
                     #print(good_pop_enzymes)
                     print("\nAdded the cut sites 1. {first}, 2. {second} and 3. {third} between the gene-of-interest sequences, the linker, and the fluorescent protein to create the final insert sequence".format(first = good_pop_enzymes[0], second = good_pop_enzymes[1], third = good_pop_enzymes[2]))
                     if(args.modality == 5):
-                        optimal_plasmid = assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + start_seq + good_pop_cutsites[0] + placeholder_code + placeholder_code + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2)
-                        print('\n The final insert sequence with the placeholder sequence (two glycines codes) instead of FPG sequence:\n{}'.format(rsite1 + start_seq + good_pop_cutsites[0] + placeholder_code + placeholder_code + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2))
+                        optimal_plasmid = assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + start_seq + good_pop_cutsites[0] + placeholder_code + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2)
+                        print('\nThe insert sequence with a placeholder sequence ({}) in place of the FPG sequence:\n{}'.format(placeholder_code, rsite1 + start_seq + good_pop_cutsites[0] + placeholder_code + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2))
                         #old printing with the first FPG sequence:
                         #print("\nThe final insert sequence with the first FPG:\n{}".format(rsite1 + start_seq + good_pop_cutsites[0] + FPGs[0][:-3] + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2)) #we don't take the stop of the FPG in case of 5' labeling
                         if not optimal_plasmid_saved and args.assembled_plasmid_name != None:
@@ -460,8 +460,9 @@ def main(args):
                             f.close()
                             optimal_plasmid_saved = 1
                     if(args.modality == 3):
-                        optimal_plasmid = assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + placeholder_code + placeholder_code + good_pop_cutsites[2] + end_seq + rsite2)
-                        print('\n The final insert sequence with the placeholder sequence (two glycines codes) instead of FPG:\n{}'.format(rsite1 + start_seq + good_pop_cutsites[0] + placeholder_code + placeholder_code + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2))
+                        optimal_plasmid = assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + placeholder_code + good_pop_cutsites[2] + end_seq + rsite2)
+                        #SJR: I think you screwed up something in the line below:
+                        print('\nThe insert sequence with a placeholder sequence ({}) in place of the FPG sequence:\n{}'.format(placeholder_code, rsite1 + start_seq + good_pop_cutsites[0] + placeholder_code + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2))
 
                         if not optimal_plasmid_saved and args.assembled_plasmid_name != None:
                             with open(args.assembled_plasmid_name, 'w') as f:
