@@ -420,8 +420,8 @@ def main(args):
                 optimal_plasmid = full_plasmid
                 MCS_rsites = (rsite1, rsite2)
             compatible_restriction_sites.append((ename0, rsite_place, ename1, ename2))
-            print("""\nRestricion site {} {} cut by enzyme {} can be used for linearizing and integrating the plasmid.\n\nFor cloning the insert into the backbone, enzymes {} and {} can be used.""".format(
-                rsite0, rsite_place, ename0, ename1, ename2
+            print("""\nRestricion site {} {} cut by enzyme {} can be used for linearizing and integrating the plasmid.\n\nFor cloning the insert into the backbone, restriction sites {} (enzyme {}) and restriction site {} (enzyme {}) can be used.""".format(
+                rsite0, rsite_place, ename0, rsite1, ename1, rsite2, ename2
             ))
             
             start_name = '5` UTR' if args.modality in [5,0] else 'Gene end'
