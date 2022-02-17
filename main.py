@@ -247,24 +247,28 @@ def rsite_search(Gene, rsitelist, enamelist, modality, alpha, min_homology=0,
 
 def find_compatible_MCS_rsites(MCS, rsitelist, enamelist, full_sequences, backbone_no_MCS_5, backbone_no_MCS_3):
     """Searches for the cutsites that can be used for opening up the bakcbone and putting in the insert. 
-    \n Performs two searches: one starting from the 5' end and one starting from the 3' end. """
+    \n Performs two searches: one starting from the 5' end and one starting from the 3' end. 
+    We stop as soon we find the first good cutsite from each side. 
+    The search strategy is thus optimal in a sense that it will remove as much cutsites from the MCS as it can.
+    If rsite0 cuts the remaining MCS sequence it will also cut any other sequence found by further search. 
+    For this reason we don't check for rsite0 presence within this function, just find the most outer cutsites in the MCS that uniquely cut the backbone and don't cut the insert sequence"""
     rsite1 = ''
     ename1 = ''
     rsite2 = ''
     ename2 = ''
 
-    backbone_no_MCS = backbone_no_MCS_3 + backbone_no_MCS_5
 
     rsitelist_sorted_right, enamelist_sorted_right, _ = find_rsite_locations(MCS, rsitelist, enamelist, starting_end=5)
     for i, rsite in enumerate(rsitelist_sorted_right):
-        if not any(rsite in full_sequence for full_sequence in full_sequences) and not rsite in backbone_no_MCS:
+        if not any(rsite in full_sequence for full_sequence in full_sequences) and not rsite in (backbone_no_MCS_5 + MCS[:MCS.find(rsite)] + backbone_no_MCS_3):
             rsite1 = rsite
             ename1 = enamelist_sorted_right[i]
             break
 
     rsitelist_sorted_left, enamelist_sorted_left, _ = find_rsite_locations(MCS, rsitelist, enamelist, starting_end=3)
     for i, rsite in enumerate(rsitelist_sorted_left):
-        if not any(rsite in full_sequence for full_sequence in full_sequences) and not (rsite in backbone_no_MCS and rsite == rsite1):
+        if not any(rsite in full_sequence for full_sequence in full_sequences) and not rsite in (backbone_no_MCS_5 + MCS[:MCS.find(rsite1)] + MCS[MCS.find(rsite)+ len(rsite):] + backbone_no_MCS_3):
+            print(backbone_no_MCS_5 + MCS[:MCS.find(rsite1)] + MCS[MCS.find(rsite)+ len(rsite):] + backbone_no_MCS_3)
             rsite2 = rsite
             ename2 = enamelist_sorted_left[i]
             break
@@ -390,31 +394,29 @@ def main(args):
             
         # check if all full sequences have only one rsite0  
         if any([(full_sequence.count(rsite0) != 1) for full_sequence in full_sequences]):
-            print("""\nRestriction site cannot be used for linearizing and integrating the plasmid because {} is not unique in the assembled insert sequence.""".format(rsite0))
-            
-            # SJR: It is not clear to me why the following would be printed if this restriction site is unavailable
-#            start_name = '5` UTR' if args.modality in [5,0] else 'Gene end'
-#            end_name = '3` UTR' if args.modality in [3,0] else 'Gene start'
-#            print("\nPieces that should be used for cloning are:\n{}: {}\n{}: {}".format(
-#                start_name, start_seq, end_name, end_seq
-#            ))
-#            print("\nTotal length of gene chunks that should be subcloned is", str((len(start_seq)+len(end_seq))))
-            
+            print("""\nRestriction site cannot be used for linearizing and integrating the plasmid because {} is not unique in the insert sequence.""".format(rsite0))
             continue
             
 
         # 7.
         # Search for the most outer CS from MCS that are not in 4. 
         rsite1, ename1, rsite2, ename2 = find_compatible_MCS_rsites(MCS, rsitelist, enamelist, full_sequences, backbone_no_MCS_5, backbone_no_MCS_3)
+        print(rsite1)
+        print(rsite2)
         if not rsite1 or not rsite2:
-            print("""\nRestriction site cannot be used for linearizing and integrating the plasmid because no good cutsites in the MCS???""".format(ename0, rsite1, rsite2))
+            print("""\n There are no good cutsites in the MCS to clone the insert which would use this cutsite.""".format(ename0, rsite1, rsite2))
             continue
 
         # 8. 
-        full_plasmid = assemble_plasmid(backbone_no_MCS_5, backbone_no_MCS_3, rsite1 + full_sequences[0] + rsite2)
+        #find the 5' part of the MCS that is left after cutting the backbone with rsite1, cutsite not included
+        cut_MCS_5 = MCS[:MCS.find(rsite1)]
+        #find the 3' part of the MCS that is left after cutting the backbone with rsite2, cutsite not included
+        cut_MCS_3 = MCS[MCS.find(rsite2)+len(rsite2):]
+        
+        full_plasmid = assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + full_sequences[0] + rsite2)
 
         if full_plasmid.count(rsite0) > 1:
-            print("""\nRestriction site cannot be used for linearizing and integrating the plasmid because {} cuts the backbone.""".format(ename0, rsite0))
+            print("""\n Insert cannot be cloned because {} cuts the backbone part of the vector after insert integration.""".format(ename0, rsite0))
         else:
             if len(compatible_restriction_sites) == 0:
                 optimal_plasmid = full_plasmid
@@ -435,7 +437,7 @@ def main(args):
             #12. Find good additonal cutsites to add on the joints between the gene chunks, linker and FPG
                 #Go through the list and check if they are good for use with these sequences
             if(args.modality != 0):
-                full_plasmids  = [assemble_plasmid(backbone_no_MCS_5, backbone_no_MCS_3, rsite1 + full_sequence + rsite2) for full_sequence in full_sequences]
+                full_plasmids  = [assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + full_sequence + rsite2) for full_sequence in full_sequences]
                 good_pop_enzymes, good_pop_cutsites = find_additional_cutsites(full_plasmids, popular_rsitelist, popular_enamelist)
                 if(len(good_pop_enzymes)<3):
                     print("\nThere are not enough popular restriction enzymes in your list to assemble the insert.")
