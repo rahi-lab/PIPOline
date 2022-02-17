@@ -462,7 +462,7 @@ def main(args):
                     if(args.modality == 3):
                         optimal_plasmid = assemble_plasmid(backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + backbone_no_MCS_3, rsite1 + start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + placeholder_code + good_pop_cutsites[2] + end_seq + rsite2)
                         #SJR: I think you screwed up something in the line below:
-                        print('\nThe insert sequence with a placeholder sequence ({}) in place of the FPG sequence:\n{}'.format(placeholder_code, rsite1 + start_seq + good_pop_cutsites[0] + placeholder_code + good_pop_cutsites[1] + linker + good_pop_cutsites[2] + end_seq + rsite2))
+                        print('\nThe insert sequence with a placeholder sequence ({}) in place of the FPG sequence:\n{}'.format(placeholder_code, rsite1 + start_seq + good_pop_cutsites[0] + linker + good_pop_cutsites[1] + placeholder_code + good_pop_cutsites[2] + end_seq + rsite2))
 
                         if not optimal_plasmid_saved and args.assembled_plasmid_name != None:
                             with open(args.assembled_plasmid_name, 'w') as f:
