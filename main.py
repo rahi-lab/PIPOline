@@ -37,7 +37,11 @@ class PIPOline:
 
     def __init__(self, backbone_path, MCS_start_ind, MCS_end_ind, linker_path, enzyme_path):
         # Read the files (1. and 2.)
-        print('\n\n\nPIPOline by Stojkovic, Gligorovski, Rahi\n\n\n***************************\n********** Read input files\n\nVector backbone:')
+        print(
+            '\n\n\nPIPOline by Stojkovic, Gligorovski, Rahi\n\n\n'
+            '***************************\n'
+            '********** Read input files\n\nVector backbone:'
+        )
         _, self.backbone = read_from_fsa(backbone_path)
         
         print('\nMultiple cloning site extracted from vector backbone:')
