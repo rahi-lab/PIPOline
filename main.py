@@ -6,7 +6,20 @@ from utils import *
 
 
 class RSiteInfo:
-    def __init__(self, rsite0, ename0, rsite_place, full_sequences, gene_rsite_position, start_seq, end_seq, real_alpha):
+    """ Contains all the information that describes one restriction site
+    """
+
+    def __init__(
+        self, Gene, modality, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs, rsite0,
+        ename0, rsite_place, full_sequences, gene_rsite_position, start_seq, end_seq, real_alpha
+    ):
+        self.Gene = Gene
+        self.modality = modality
+        self.alpha = alpha
+        self.min_homology = min_homology
+        self.left_of_Gene = left_of_Gene
+        self.right_of_Gene = right_of_Gene
+        self.FPGs = FPGs
         self.rsite0 = rsite0
         self.ename0 = ename0
         self.rsite_place = rsite_place
@@ -18,7 +31,9 @@ class RSiteInfo:
 
 
 class PIPOline:
-
+    """ Main class of the project, initialized with set of constraints (backbone, MCS, linker and enzymes).
+    It finds and validates restriction sites for given Gene and modality (3'/5' tagging or deletion) 
+    """
 
     def __init__(self, backbone_path, MCS_start_ind, MCS_end_ind, linker_path, enzyme_path):
         # Read the files (1. and 2.)
@@ -91,6 +106,9 @@ class PIPOline:
 
 
     def rsite_search_5_tag(self, Gene, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs):
+        """Finds rsites for 5` tag modality
+        """
+
         Gene_and_right_of_Gene = Gene + right_of_Gene
 
         rsitelist_gene, enamelist_gene, rsite_position_list_gene = self.find_rsite_locations(
@@ -122,6 +140,9 @@ class PIPOline:
 
 
     def rsite_search_3_tag(self, Gene, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs):
+        """Finds rsites for 3` tag modality
+        """
+
         left_of_Gene_and_Gene = left_of_Gene + Gene
 
         rsitelist_gene, enamelist_gene, rsite_position_list_gene = self.find_rsite_locations(
@@ -157,6 +178,9 @@ class PIPOline:
 
 
     def rsite_search_delete(self, alpha, min_homology, left_of_Gene, right_of_Gene):
+        """Finds rsites for delete modality
+        """
+
         rsitelist_5, enamelist_5, rsite_position_list_5 = self.find_rsite_locations(left_of_Gene, self.rsitelist,
                                                                                 self.enamelist, 3, min_homology)
         rsitelist_3, enamelist_3, rsite_position_list_3 = self.find_rsite_locations(right_of_Gene, self.rsitelist,
@@ -219,6 +243,13 @@ class PIPOline:
         # return return_dict
         return [
             RSiteInfo(
+                Gene,
+                modality,
+                alpha,
+                min_homology,
+                left_of_Gene,
+                right_of_Gene,
+                FPGs,
                 return_dict['rsitelist'][i],
                 return_dict['enamelist'][i],
                 return_dict['rsite_places'][i],
@@ -238,7 +269,9 @@ class PIPOline:
         The search strategy is thus optimal in a sense that it will remove as much cutsites from the MCS as it can.
         If rsite0 cuts the remaining MCS sequence it will also cut any other sequence found by further search. 
         For this reason we don't check for rsite0 presence within this function, just find the most outer cutsites in 
-        the MCS that uniquely cut the backbone and don't cut the insert sequence"""
+        the MCS that uniquely cut the backbone and don't cut the insert sequence
+        """
+
         rsite1 = ''
         ename1 = ''
         rsite2 = ''
@@ -286,6 +319,12 @@ class PIPOline:
 
 
     def validate_restriction_site(self, rsite_id, rsite_info):
+        """ Validates given restriction site (RSiteInfo object)
+        Validation checks following things:
+        1. Uniqness of rsite in full_sequence
+        2. If there are compatible MCS cutsites
+        3. If rsite cuts final plasmid
+        """
 
         print("""\n\n****** Testing restriction site {}, sequence: {}, enzyme: {}, location: {} {}""".format(str(
             rsite_id+1), rsite_info.rsite0, rsite_info.ename0, rsite_info.gene_rsite_position, rsite_info.rsite_place))
@@ -524,6 +563,5 @@ if __name__ == '__main__':
     parser.add_argument("--assembled_plasmid_name", type = str)
 
     args = parser.parse_args()
-#    print(args)
 
     main(args)
