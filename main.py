@@ -377,8 +377,8 @@ class PIPOline:
                     rsite_info.rsite0, rsite_info.rsite_place, rsite_info.ename0, rsite1, ename1, rsite2, ename2)
             )
             
-            start_name = '5` UTR' if args.modality in [5,0] else 'Gene end'
-            end_name = '3` UTR' if args.modality in [3,0] else 'Gene start'
+            start_name = '5` UTR' if rsite_info.modality in [5,0] else 'Gene end'
+            end_name = '3` UTR' if rsite_info.modality in [3,0] else 'Gene start'
             print(
                 "\nInsert will be constructed with the following sequences from"
                 " the gene-of-interest:\n{}:\n{}\n{}:\n{}".format(
@@ -388,7 +388,7 @@ class PIPOline:
                 "\nDesired alpha: {}, Realized alpha: {:.2} (which can be less"
                 " than the desired alpha if the gene-of-interest sequence is"
                 " not long enough to find homology for the popout)".format(
-                    args.alpha, rsite_info.real_alpha)
+                    rsite_info.alpha, rsite_info.real_alpha)
             )
             print(
                 "\nTotal length of sequences from the gene-of-interest going into the insert is:",
@@ -398,7 +398,7 @@ class PIPOline:
             return (rsite1, rsite2, cut_MCS_5, cut_MCS_3, compatible_rsites)
 
 
-    def find_optimal_plasmid(self, modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2, popular_enzyme_path, assembled_plasmid_name, save_optimal_plasmid=False):
+    def find_optimal_plasmid(self, modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2, popular_enzyme_path, assembled_plasmid_name, Gene_path, save_optimal_plasmid=False):
         """Find good additonal cutsites to add on the joints between the gene chunks, linker and FPG
         Go through the list and check if they are good for use with these sequences"""
 
@@ -445,7 +445,7 @@ class PIPOline:
                             '>Plasmid for N-terminal tagging of {} with fluorescent proteins. Can be integrated into'
                             ' the budding yeast genome using {}, {} cutsite. To ensure high-efficency digestion during'
                             ' FPG cloning, there is a placeholder sequence between the gene piece and the linker'.format(
-                                args.Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0)
+                                Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0)
                         )
                         f.write('\n')
                         f.write(optimal_plasmid)
@@ -473,7 +473,7 @@ class PIPOline:
                             '>Plasmid for C-terminal tagging of {} with fluorescent proteins. Can be integrated into'
                             ' the budding yeast genome using {}, {} cutsite. To ensure high-efficency digestion during'
                             ' FPG cloning, there is a placeholder sequence between the gene piece and the linker'.format(
-                                args.Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0)
+                                Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0)
                         )
                         f.write('\n')
                         f.write(optimal_plasmid)
@@ -521,7 +521,7 @@ class PIPOline:
                 if modality in [3,5]:
                     optimal_plasmid = self.find_optimal_plasmid(
                         modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2,
-                        popular_enzyme_path, assembled_plasmid_name,
+                        popular_enzyme_path, assembled_plasmid_name, Gene_path,
                         save_optimal_plasmid=not shortest_optimal_plasmid
                     )
                     # save shortest optimal plasmid found
