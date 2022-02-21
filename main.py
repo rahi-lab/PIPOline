@@ -1,4 +1,5 @@
 import argparse
+from msilib.schema import FileSFPCatalog
 
 import numpy as np
 
@@ -10,7 +11,7 @@ class RSiteInfo:
     """
 
     def __init__(
-        self, Gene, modality, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs, rsite0,
+        self, Gene, modality, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs, FPGs_names, rsite0,
         ename0, rsite_place, full_sequences, gene_rsite_position, start_seq, end_seq, real_alpha
     ):
         self.Gene = Gene
@@ -20,6 +21,7 @@ class RSiteInfo:
         self.left_of_Gene = left_of_Gene
         self.right_of_Gene = right_of_Gene
         self.FPGs = FPGs
+        self.FPGs_names = FPGs_names
         self.rsite0 = rsite0
         self.ename0 = ename0
         self.rsite_place = rsite_place
@@ -213,7 +215,7 @@ class PIPOline:
         }
 
 
-    def rsite_search(self, Gene, modality, alpha, min_homology=0, left_of_Gene='', right_of_Gene='', FPGs=[]):
+    def rsite_search(self, Gene, modality, alpha, min_homology=0, left_of_Gene='', right_of_Gene='', FPGs=[], FPGs_names = []):
         """This is the central function that finds suitable cutsites for the given list of FPGs and the linker
 
 
@@ -225,7 +227,7 @@ class PIPOline:
         Function returns a dictionary of parameters that describe the cloning """
 
         if modality not in [0, 3, 5]:
-            raise ValueError('Wrong starting_position value')
+            raise ValueError('Wrong modality value')
 
         #5' tagging
         if modality == 5:
@@ -254,6 +256,7 @@ class PIPOline:
                 left_of_Gene,
                 right_of_Gene,
                 FPGs,
+                FPGs_names,
                 return_dict['rsitelist'][i],
                 return_dict['enamelist'][i],
                 return_dict['rsite_places'][i],
@@ -264,7 +267,6 @@ class PIPOline:
                 return_dict['real_alphas'][i]
             ) for i in range(len(full_sequences_per_rsite))
         ]
-
 
     def find_compatible_MCS_rsites(self, full_sequences):
         """Searches for the cutsites that can be used for opening up the bakcbone and putting in the insert. 
@@ -321,6 +323,29 @@ class PIPOline:
     def assemble_plasmid(self, backbone_no_MCS_5, backbone_no_MCS_3, sequence): 
         return backbone_no_MCS_5 + sequence + backbone_no_MCS_3
 
+    def print_cutsite_location(self, cutsite, ename, left_part, right_part, FPGs_seq, FPGs_name, linker, modality):
+        """Prints out the location of the cutsite that is present in the insert. 
+        \n Goes first through all pieces of the insert and if it's not present in any concludes that it's in the joints"""
+
+        in_isolated_parts = 0
+
+        left_part_name = '5` UTR' if modality in [5,0] else 'Gene end'
+        right_part_name = '3` UTR' if modality in [3,0] else 'Gene start'
+        if(left_part.find(cutsite) > 0):
+            print("Cutsite of {}, {} is present in the {}".format(ename, cutsite, left_part_name))
+            in_isolated_parts = 1
+        if(right_part.find(cutsite) > 0):
+            print("Cutsite of {}, {} is present in the {}".format(ename, cutsite, right_part_name))
+            in_isolated_parts = 1
+        if(linker.find(cutsite) > 0):
+            print("Cutsite of {}, {} is present in the linker".format(ename, cutsite, linker))
+            in_isolated_parts = 1
+        for FPG_name, FPG in zip(FPGs_name, FPGs_seq):
+            if(FPG.find(cutsite) > 0):
+                print("Cutsite of {}, {} is present in {}".format(ename, cutsite, FPG_name))
+                in_isolated_parts = 1
+        if(not in_isolated_parts):
+            print("Cutsite of {}, {} does not cut any gene parts, linker or any of the FPGs but cuts the final sequence after joining them. Try introducing a buffer sequence between them".format(ename, cutsite))
 
     def validate_restriction_site(self, rsite_id, rsite_info):
         """ Validates given restriction site (RSiteInfo object)
@@ -335,11 +360,13 @@ class PIPOline:
             
         # check if all full sequences have only one rsite0  
         if any([(full_sequence.count(rsite_info.rsite0) != 1) for full_sequence in rsite_info.full_sequences]):
+            
             print(
                 "\nEnzyme {} cannot be used for linearizing and integrating the"
                 " plasmid because {} is not unique in the insert sequence.".format(
                     rsite_info.ename0, rsite_info.rsite0)
             )
+            self.print_cutsite_location(rsite_info.rsite0, rsite_info.ename0, rsite_info.start_seq, rsite_info.end_seq, rsite_info.FPGs, rsite_info.FPGs_names, self.linker, rsite_info.modality)
             return (None, None, None, None, None)
             
         # Search for the most outer CS from MCS that are not in 4. 
@@ -445,7 +472,7 @@ class PIPOline:
                             '>Plasmid for N-terminal tagging of {} with fluorescent proteins. Can be integrated into'
                             ' the budding yeast genome using {}, {} cutsite. Intented to be labeled with {}. '
                             'To ensure high-efficency digestion during FPG cloning, there is'
-                            'a placeholder sequence between the gene piece and the linker'.format(
+                            ' a placeholder sequence between the gene piece and the linker'.format(
                                 Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0, FPG_names)
                         )
                         f.write('\n')
@@ -473,7 +500,7 @@ class PIPOline:
                             '>Plasmid for C-terminal tagging of {} with fluorescent proteins. Can be integrated into'
                             ' the budding yeast genome using {}, {} cutsite. Intented to be labeled with {}. '
                             'To ensure high-efficency digestion during FPG cloning, there is'
-                            'a placeholder sequence between the gene piece and the linker'.format(
+                            ' a placeholder sequence between the gene piece and the linker'.format(
                                 Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0, FPG_names)
                         )
                         f.write('\n')
@@ -492,8 +519,8 @@ class PIPOline:
 
         print('\nFluorescent protein genes:')
         FPGs = [read_from_fsa(path)[1] for path in FPG_paths] if len(FPG_paths) else []
-        FPG_names = [path.split('\\')[-1] for path in FPG_paths]
-        rsite_info_list = self.rsite_search(Gene, modality, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs)
+        FPGs_names = [path.split('/')[-1] for path in FPG_paths]
+        rsite_info_list = self.rsite_search(Gene, modality, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs, FPGs_names)
 
         compatible_restriction_sites = []
         MCS_rsites = None
@@ -522,7 +549,7 @@ class PIPOline:
                 if modality in [3,5]:
                     optimal_plasmid = self.find_optimal_plasmid(
                         modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2,
-                        popular_enzyme_path, assembled_plasmid_name, Gene_path, FPG_names,
+                        popular_enzyme_path, assembled_plasmid_name, Gene_path, FPGs_names,
                         save_optimal_plasmid=not shortest_optimal_plasmid
                     )
                     # save shortest optimal plasmid found
