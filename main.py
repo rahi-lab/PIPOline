@@ -398,7 +398,7 @@ class PIPOline:
             return (rsite1, rsite2, cut_MCS_5, cut_MCS_3, compatible_rsites)
 
 
-    def find_optimal_plasmid(self, modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2, popular_enzyme_path, assembled_plasmid_name, Gene_path, FPGs, save_optimal_plasmid=False):
+    def find_optimal_plasmid(self, modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2, popular_enzyme_path, assembled_plasmid_name, Gene_path, FPG_names, save_optimal_plasmid=False):
         """Find good additonal cutsites to add on the joints between the gene chunks, linker and FPG
         Go through the list and check if they are good for use with these sequences"""
 
@@ -446,7 +446,7 @@ class PIPOline:
                             ' the budding yeast genome using {}, {} cutsite. Intented to be labeled with {}. '
                             'To ensure high-efficency digestion during FPG cloning, there is'
                             'a placeholder sequence between the gene piece and the linker'.format(
-                                Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0, FPGs)
+                                Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0, FPG_names)
                         )
                         f.write('\n')
                         f.write(optimal_plasmid)
@@ -474,7 +474,7 @@ class PIPOline:
                             ' the budding yeast genome using {}, {} cutsite. Intented to be labeled with {}. '
                             'To ensure high-efficency digestion during FPG cloning, there is'
                             'a placeholder sequence between the gene piece and the linker'.format(
-                                Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0, FPGs)
+                                Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0, FPG_names)
                         )
                         f.write('\n')
                         f.write(optimal_plasmid)
@@ -492,7 +492,7 @@ class PIPOline:
 
         print('\nFluorescent protein genes:')
         FPGs = [read_from_fsa(path)[1] for path in FPG_paths] if len(FPG_paths) else []
-
+        FPG_names = [path.split('\\')[-1] for path in FPG_paths]
         rsite_info_list = self.rsite_search(Gene, modality, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs)
 
         compatible_restriction_sites = []
@@ -522,7 +522,7 @@ class PIPOline:
                 if modality in [3,5]:
                     optimal_plasmid = self.find_optimal_plasmid(
                         modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2,
-                        popular_enzyme_path, assembled_plasmid_name, Gene_path, FPGs,
+                        popular_enzyme_path, assembled_plasmid_name, Gene_path, FPG_names,
                         save_optimal_plasmid=not shortest_optimal_plasmid
                     )
                     # save shortest optimal plasmid found
