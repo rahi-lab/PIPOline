@@ -19,7 +19,7 @@ Output:
 For each cutsite present in the gene sequence and surounding 2*1000 bp:
     Print whether it can be used for integrating the final plasmid into the yeast genome.
     If not, say the reason (possible reasons: 1. cuts the insert, with any of the FPGs, more than once, 2. cuts the backbone 3. there are no good cutsites for cloning within the MCS - in certain cases there might be multiple reasons but only one is printed).
-    If yes, generate the left and right piece of DNA sequence that should be used for pop-out based tagging/deletion (e.g. in the case of 5' tagging these are sequences left from the gene (the so-called 3'UTR) and the beginning of the gene).
+    If yes, generate the left and right piece of DNA sequence that should be used for pop-out based tagging/deletion (e.g. in the case of 5' tagging these are sequences left from the gene (terminator) and the beginning of the gene).
     In case of gene tagging: Generate an example of insert that contains the first loaded FPG and additional cutsites around each part of the sequence.
 
 Note: Sequences in the output are sorted according to the length of gene sequences that should be used, from smallest to largest.

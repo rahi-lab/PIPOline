@@ -303,11 +303,13 @@ class PIPOline:
 
     def find_additional_cutsites(self, plasmids, rsitelist, enamelist):
         """Finds all appropropriate cutsites that could be added between different pieces of the insert in the plasmid 
+        
         (e.g. between the gene and the linker or between the linker and the FPG etc).
         \n A good cutsite has to fullfill three criteria:
         1. Divisible by 3 (this could be circuimvented by accomidating the linker length)
         2. Does not cut the final plasmids (plural in case of several FPGs)
-        3. Does not introduce a stop codon"""
+        3. Does not introduce a stop codon"
+        4. When introduced, does not introduce a rsite0, rsite1 nor rsite2 around the joints of the new sequences"""
 
         good_rsite_list = []
         good_enzyme_list = []
@@ -318,6 +320,81 @@ class PIPOline:
                     good_enzyme_list.append(enzyme)
 
         return good_enzyme_list, good_rsite_list
+   
+    def check_uniqueness_preservation(self, start_seqs, end_seqs, good_enzyme_list, good_rsite_list, rsite0, rsite1, rsite2): 
+        #TODO test
+        #Checks whether the enzymes from the list can be introduced between start_seq and end_seq without introducing riste0, rsite1 nor riste2
+        #if yes, it returns the chosen cutsite (first found in the list read from the top) and updates the lists by removing it
+        #If not, it returns None, which means that the list of 'good' cutsites has to be expanded
+        
+        index = -1 #index of the found cutsite
+
+        #either start_seq or end_seq can be a list in case they're FPGs
+        for i, rsite in enumerate(good_rsite_list):
+            satisfies_all = 1 #parameter that is 1 in case the ongoing cutsite satisfies all combinations of start_seq and end_seq; 0 otherwise
+            for start_seq in start_seqs:
+                for end_seq in end_seqs:
+                    assembled_seq = start_seq + rsite + end_seq
+                    if(rsite0 in assembled_seq or rsite1 in assembled_seq or rsite2 in assembled_seq):
+                        satisfies_all = 0
+          
+            if(satisfies_all == 1):
+                        index = i
+                        good_site = rsite
+                        break #breaks the biggest loop
+
+        if(index == -1): #not found
+            return None, good_enzyme_list, good_rsite_list
+        else:
+            #remove them by .pop() so that they're not used repeatedly for the next steps
+
+            good_enzyme_list.pop(index)
+            good_rsite_list.pop(index)
+            return good_site, good_enzyme_list, good_rsite_list
+    
+    def verify_additional_cutsites(self, FPGs, linker, start_seq, end_seq, modality, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2):
+
+        if(modality == 5):
+            #the cutsites are added 1. between the start seq and the FPG 2. between the FPG and the linker 3. between the linker and the end_seq 
+
+            good_site1, good_enzyme_list, good_rsite_list = self.heck_uniqueness_preservation(start_seq, FPGs, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
+            good_site2, good_enzyme_list, good_rsite_list = self.check_uniqueness_preservation(FPGs, linker, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
+            good_site3, good_enzyme_list, good_rsite_list = self.check_uniqueness_preservation(linker, end_seq, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
+            
+            if(any(good_site == None for good_site in [good_site1, good_site2, good_site3])):
+                print("\nThere are not enough popular restriction enzymes in your list to assemble the insert.")
+            else:
+                print(
+                    "\nAdded the cut sites 1. {first}, 2. {second} and 3. {third} between the gene-of-interest sequences,"
+                    " the linker, and the fluorescent protein to create the final insert sequence".format(
+                        first = good_site1, second=good_site2, third=good_site3)
+                )
+        
+        if(modality == 3):
+            #the cutsites are added 1. between the start seq and the linker 2. between the linker and the FPGs 3. between the FPGs and the end_seq 
+
+            good_site1, good_enzyme_list, good_rsite_list = self.check_uniqueness_preservation(start_seq, linker, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
+            good_site2, good_enzyme_list, good_rsite_list = self.check_uniqueness_preservation(linker, FPGs, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
+            good_site3, good_enzyme_list, good_rsite_list = self.check_uniqueness_preservation(FPGs, end_seq, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
+        
+        print('AAAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA')
+        print(good_site1)
+        print(good_site1)
+        print(good_site2)
+        print(good_site3)
+
+        if(any(good_site == None for good_site in [good_site1, good_site2, good_site3])):
+            print("\nThere are not enough popular restriction enzymes in your list to assemble the insert.")
+        else:
+            print(
+                "\nAdded the cut sites 1. {first}, 2. {second} and 3. {third} between the gene-of-interest sequences,"
+                " the linker, and the fluorescent protein to create the final insert sequence".format(
+                    first = good_site1, second=good_site2, third=good_site3)
+            )
+
+        #TODO organize this return of None to be recobnizible in the main if needed
+        return good_site1, good_site2, good_site3
+
 
 
     def assemble_plasmid(self, backbone_no_MCS_5, backbone_no_MCS_3, sequence): 
@@ -425,7 +502,9 @@ class PIPOline:
             return (rsite1, rsite2, cut_MCS_5, cut_MCS_3, compatible_rsites)
 
 
-    def find_optimal_plasmid(self, modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2, popular_enzyme_path, assembled_plasmid_name, Gene_path, FPG_names, save_optimal_plasmid=False):
+    def find_optimal_plasmid(self, modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2, popular_enzyme_path, assembled_plasmid_name, Gene_path, FPG_names, FPG_seq, save_optimal_plasmid=False):
+       #TODO: test for deletion. Looks like it's not printing anything?
+       
         """Find good additonal cutsites to add on the joints between the gene chunks, linker and FPG
         Go through the list and check if they are good for use with these sequences"""
 
@@ -441,77 +520,73 @@ class PIPOline:
                 rsite1 + full_sequence + rsite2
             ) for full_sequence in rsite_info.full_sequences
         ]
+        
         good_pop_enzymes, good_pop_cutsites = self.find_additional_cutsites(full_plasmids, popular_rsitelist, popular_enamelist)
         
-        if(len(good_pop_enzymes)<3):
-            print("\nThere are not enough popular restriction enzymes in your list to assemble the insert.")
-        else:
-            print(
-                "\nAdded the cut sites 1. {first}, 2. {second} and 3. {third} between the gene-of-interest sequences,"
-                " the linker, and the fluorescent protein to create the final insert sequence".format(
-                    first=good_pop_enzymes[0], second=good_pop_enzymes[1], third=good_pop_enzymes[2])
+        #three additional cutsites that we introduce into the plasmid, to make the parts more modular
+        rsite3, rsite4, rsite5 = self.verify_additional_cutsites(FPG_seq, self.linker, rsite_info.start_seq, rsite_info.end_seq, modality, good_pop_enzymes, good_pop_cutsites, rsite_info.rsite0, rsite1, rsite2)
+        
+        if(modality == 5):
+            optimal_plasmid = self.assemble_plasmid(
+                self.backbone_no_MCS_5 + cut_MCS_5, 
+                cut_MCS_3 + self.backbone_no_MCS_3,
+                rsite1 + rsite_info.start_seq + rsite3 + 
+                placeholder_code + rsite4 + self.linker + 
+                rsite5 + rsite_info.end_seq + rsite2
             )
-            
-            if(modality == 5):
-                optimal_plasmid = self.assemble_plasmid(
-                    self.backbone_no_MCS_5 + cut_MCS_5, 
-                    cut_MCS_3 + self.backbone_no_MCS_3,
-                    rsite1 + rsite_info.start_seq + good_pop_cutsites[0] + 
-                    placeholder_code + good_pop_cutsites[1] + self.linker + 
-                    good_pop_cutsites[2] + rsite_info.end_seq + rsite2
-                )
-                print(
-                    '\nThe insert sequence with a placeholder sequence ({}) in place of the FPG sequence:\n{}'.format(
-                        placeholder_code, rsite1 + rsite_info.start_seq + good_pop_cutsites[0] +
-                        placeholder_code + good_pop_cutsites[1] + self.linker +
-                        good_pop_cutsites[2] + rsite_info.end_seq + rsite2)
-                )
-                if save_optimal_plasmid and assembled_plasmid_name != None:
-                    with open(assembled_plasmid_name, 'w') as f:
-                        f.write(
-                            '>Plasmid for N-terminal tagging of {} with fluorescent proteins. Can be integrated into'
-                            ' the budding yeast genome using {}, {} cutsite. Intented to be labeled with {}. '
-                            'To ensure high-efficency digestion during FPG cloning, there is'
-                            ' a placeholder sequence between the gene piece and the linker'.format(
-                                Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0, FPG_names)
-                        )
-                        f.write('\n')
-                        f.write(optimal_plasmid)
-                    f.close()
+            print(
+                '\nThe insert sequence with a placeholder sequence ({}) in place of the FPG sequence:\n{}'.format(
+                    placeholder_code, rsite1 + rsite_info.start_seq + rsite3 +
+                    placeholder_code + rsite4 + self.linker +
+                    rsite5 + rsite_info.end_seq + rsite2)
+            )
+            if save_optimal_plasmid and assembled_plasmid_name != None:
+                with open(assembled_plasmid_name, 'w') as f:
+                    f.write(
+                        '>Plasmid for N-terminal tagging of {} with fluorescent proteins. Can be integrated into'
+                        ' the budding yeast genome using {}, {} cutsite. Intented to be labeled with {}. '
+                        'To ensure high-efficency digestion during FPG cloning, there is'
+                        ' a placeholder sequence between the gene piece and the linker'.format(
+                            Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0, FPG_names)
+                    )
+                    f.write('\n')
+                    f.write(optimal_plasmid)
+                f.close()
 
-            if(modality == 3):
-                optimal_plasmid = self.assemble_plasmid(
-                    self.backbone_no_MCS_5 + cut_MCS_5, 
-                    cut_MCS_3 + self.backbone_no_MCS_3, 
-                    rsite1 + rsite_info.start_seq + good_pop_cutsites[0] + 
-                    self.linker + good_pop_cutsites[1] + placeholder_code + 
-                    good_pop_cutsites[2] + rsite_info.end_seq + rsite2
-                )
-                print(
-                    '\nThe insert sequence with a placeholder sequence ({}) in place of the FPG sequence:\n{}'.format(
-                        placeholder_code, rsite1 + rsite_info.start_seq +
-                        good_pop_cutsites[0] + self.linker + good_pop_cutsites[1] +
-                        placeholder_code + good_pop_cutsites[2] + rsite_info.end_seq + rsite2)
-                )
+        if(modality == 3):
+            optimal_plasmid = self.assemble_plasmid(
+                self.backbone_no_MCS_5 + cut_MCS_5, 
+                cut_MCS_3 + self.backbone_no_MCS_3, 
+                rsite1 + rsite_info.start_seq + rsite3 + 
+                self.linker + rsite4 + placeholder_code + 
+                rsite5 + rsite_info.end_seq + rsite2
+            )
+            print(
+                '\nThe insert sequence with a placeholder sequence ({}) in place of the FPG sequence:\n{}'.format(
+                    placeholder_code, rsite1 + rsite_info.start_seq +
+                    rsite3 + self.linker + rsite4 +
+                    placeholder_code + rsite5 + rsite_info.end_seq + rsite2)
+            )
 
-                if save_optimal_plasmid and assembled_plasmid_name != None:
-                    with open(assembled_plasmid_name, 'w') as f:
-                        f.write(
-                            '>Plasmid for C-terminal tagging of {} with fluorescent proteins. Can be integrated into'
-                            ' the budding yeast genome using {}, {} cutsite. Intented to be labeled with {}. '
-                            'To ensure high-efficency digestion during FPG cloning, there is'
-                            ' a placeholder sequence between the gene piece and the linker'.format(
-                                Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0, FPG_names)
-                        )
-                        f.write('\n')
-                        f.write(optimal_plasmid)
-                    f.close()
+            if save_optimal_plasmid and assembled_plasmid_name != None:
+                with open(assembled_plasmid_name, 'w') as f:
+                    f.write(
+                        '>Plasmid for C-terminal tagging of {} with fluorescent proteins. Can be integrated into'
+                        ' the budding yeast genome using {}, {} cutsite. Intented to be labeled with {}. '
+                        'To ensure high-efficency digestion during FPG cloning, there is'
+                        ' a placeholder sequence between the gene piece and the linker'.format(
+                            Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0, FPG_names)
+                    )
+                    f.write('\n')
+                    f.write(optimal_plasmid)
+                f.close()
 
             print("\nOther popular enzymes that can be used in place of the three listed above are {}".format(good_pop_enzymes[3:]))
-            return optimal_plasmid
+        return optimal_plasmid
 
 
     def run(self, Gene_path, modality, alpha, min_homology, FPG_paths, popular_enzyme_path=None, assembled_plasmid_name=None):
+        """Assembles the plasmid by using subfunctions"""
         
         print('\nGene-of-interest sequence (ORF +/- 1000 bps):')
         _, Gene_plus = read_from_fsa(Gene_path)
@@ -549,7 +624,7 @@ class PIPOline:
                 if modality in [3,5]:
                     optimal_plasmid = self.find_optimal_plasmid(
                         modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2,
-                        popular_enzyme_path, assembled_plasmid_name, Gene_path, FPGs_names,
+                        popular_enzyme_path, assembled_plasmid_name, Gene_path, FPGs_names, FPGs,
                         save_optimal_plasmid=not shortest_optimal_plasmid
                     )
                     # save shortest optimal plasmid found
