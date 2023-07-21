@@ -72,8 +72,6 @@ class PIPOline:
             rsite_position_list = np.array([sequence_cut.rfind(rsite) for rsite in rsitelist]) 
             sorted_inds = np.argsort(-rsite_position_list)
 
-        # TODO Is sorting really needed? as we later sort sequences by the length?
-
         # remove not matched rsites
         rsite_position_list = rsite_position_list[sorted_inds]
         matched_inds = (rsite_position_list != -1)
@@ -322,7 +320,6 @@ class PIPOline:
         return good_enzyme_list, good_rsite_list
    
     def check_uniqueness_preservation(self, start_seqs, end_seqs, good_enzyme_list, good_rsite_list, rsite0, rsite1, rsite2): 
-        #TODO test
         #Checks whether the enzymes from the list can be introduced between start_seq and end_seq without introducing riste0, rsite1 nor riste2
         #if yes, it returns the chosen cutsite (first found in the list read from the top) and updates the lists by removing it
         #If not, it returns None, which means that the list of 'good' cutsites has to be expanded
@@ -377,20 +374,16 @@ class PIPOline:
             good_site2, good_enzyme_list, good_rsite_list = self.check_uniqueness_preservation(linker, FPGs, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
             good_site3, good_enzyme_list, good_rsite_list = self.check_uniqueness_preservation(FPGs, end_seq, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
         
-        print('AAAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA')
-        print(good_site1)
-        print(good_site1)
-        print(good_site2)
-        print(good_site3)
 
-        if(any(good_site == None for good_site in [good_site1, good_site2, good_site3])):
-            print("\nThere are not enough popular restriction enzymes in your list to assemble the insert.")
-        else:
-            print(
-                "\nAdded the cut sites 1. {first}, 2. {second} and 3. {third} between the gene-of-interest sequences,"
-                " the linker, and the fluorescent protein to create the final insert sequence".format(
-                    first = good_site1, second=good_site2, third=good_site3)
-            )
+
+            if(any(good_site == None for good_site in [good_site1, good_site2, good_site3])):
+                print("\nThere are not enough popular restriction enzymes in your list to assemble the insert.")
+            else:
+                print(
+                    "\nAdded the cut sites 1. {first}, 2. {second} and 3. {third} between the gene-of-interest sequences,"
+                    " the linker, and the fluorescent protein to create the final insert sequence".format(
+                        first = good_site1, second=good_site2, third=good_site3)
+                )
 
         #TODO organize this return of None to be recobnizible in the main if needed
         return good_site1, good_site2, good_site3
@@ -503,7 +496,6 @@ class PIPOline:
 
 
     def find_optimal_plasmid(self, modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2, popular_enzyme_path, assembled_plasmid_name, Gene_path, FPG_names, FPG_seq, save_optimal_plasmid=False):
-       #TODO: test for deletion. Looks like it's not printing anything?
        
         """Find good additonal cutsites to add on the joints between the gene chunks, linker and FPG
         Go through the list and check if they are good for use with these sequences"""
@@ -521,11 +513,28 @@ class PIPOline:
             ) for full_sequence in rsite_info.full_sequences
         ]
         
-        good_pop_enzymes, good_pop_cutsites = self.find_additional_cutsites(full_plasmids, popular_rsitelist, popular_enamelist)
+        if(modality == 0):
+            optimal_plasmid = self.assemble_plasmid(self.backbone_no_MCS_5 + cut_MCS_5, cut_MCS_3 + self.backbone_no_MCS_3, rsite1 + rsite_info.start_seq + rsite_info.end_seq + rsite2)
+            
+            if save_optimal_plasmid and assembled_plasmid_name != None:
+                with open(assembled_plasmid_name, 'w') as f:
+                    f.write(
+                        '>Plasmid for deletion of {}. Can be integrated into'
+                        ' the budding yeast genome using {}, {} cutsite.'.format(
+                            Gene_path.split('/')[-1][0:4], rsite_info.ename0, rsite_info.rsite0)
+                    )
+                    f.write('\n')
+                    f.write(optimal_plasmid)
+                f.close()
         
-        #three additional cutsites that we introduce into the plasmid, to make the parts more modular
-        rsite3, rsite4, rsite5 = self.verify_additional_cutsites(FPG_seq, self.linker, rsite_info.start_seq, rsite_info.end_seq, modality, good_pop_enzymes, good_pop_cutsites, rsite_info.rsite0, rsite1, rsite2)
-        
+        if(modality == 3 or modality == 5):
+            good_pop_enzymes, good_pop_cutsites = self.find_additional_cutsites(full_plasmids, popular_rsitelist, popular_enamelist)
+            
+            #three additional cutsites that we introduce into the plasmid, to make the parts more modular
+            rsite3, rsite4, rsite5 = self.verify_additional_cutsites(FPG_seq, self.linker, rsite_info.start_seq, rsite_info.end_seq, modality, good_pop_enzymes, good_pop_cutsites, rsite_info.rsite0, rsite1, rsite2)
+            
+
+                
         if(modality == 5):
             optimal_plasmid = self.assemble_plasmid(
                 self.backbone_no_MCS_5 + cut_MCS_5, 
@@ -620,8 +629,8 @@ class PIPOline:
                 if len(compatible_restriction_sites) == 1:
                     MCS_rsites = (rsite1, rsite2)
 
-                # find optimal plasmid for 3` and 5` tagging modalities
-                if modality in [3,5]:
+                # find optimal plasmid
+                if modality in [3,5,0]:
                     optimal_plasmid = self.find_optimal_plasmid(
                         modality, rsite_info, cut_MCS_5, cut_MCS_3, rsite1, rsite2,
                         popular_enzyme_path, assembled_plasmid_name, Gene_path, FPGs_names, FPGs,
