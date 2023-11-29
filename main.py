@@ -354,7 +354,7 @@ class PIPOline:
         if(modality == 5):
             #the cutsites are added 1. between the start seq and the FPG 2. between the FPG and the linker 3. between the linker and the end_seq 
 
-            good_site1, good_enzyme_list, good_rsite_list = self.heck_uniqueness_preservation(start_seq, FPGs, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
+            good_site1, good_enzyme_list, good_rsite_list = self.check_uniqueness_preservation(start_seq, FPGs, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
             good_site2, good_enzyme_list, good_rsite_list = self.check_uniqueness_preservation(FPGs, linker, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
             good_site3, good_enzyme_list, good_rsite_list = self.check_uniqueness_preservation(linker, end_seq, good_enzyme_list, good_rsite_list, rsite0, rsite1, riste2)
             
