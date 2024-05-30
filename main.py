@@ -1,8 +1,6 @@
 import argparse
 from msilib.schema import FileSFPCatalog
-
 import numpy as np
-
 from utils import *
 
 
@@ -11,12 +9,12 @@ class RSiteInfo:
     """
 
     def __init__(
-        self, Gene, modality, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs, FPGs_names, rsite0,
-        ename0, rsite_place, full_sequences, gene_rsite_position, start_seq, end_seq, real_alpha
+        self, Gene, modality, R, min_homology, left_of_Gene, right_of_Gene, FPGs, FPGs_names, rsite0,
+        ename0, rsite_place, full_sequences, gene_rsite_position, start_seq, end_seq, real_R
     ):
         self.Gene = Gene
         self.modality = modality
-        self.alpha = alpha
+        self.R = R
         self.min_homology = min_homology
         self.left_of_Gene = left_of_Gene
         self.right_of_Gene = right_of_Gene
@@ -29,7 +27,7 @@ class RSiteInfo:
         self.gene_rsite_position = gene_rsite_position
         self.start_seq = start_seq
         self.end_seq = end_seq
-        self.real_alpha = real_alpha
+        self.real_R = real_R
 
 
 class PIPOline:
@@ -85,8 +83,8 @@ class PIPOline:
         return rsitelist, enamelist, rsite_position_list
 
 
-    def generate_start_end_sequences(self, left_chunk, right_chunk, rsite_side, rsite_position, rsite, minhomology, alpha, stop_codon_offset=0):
-        """Generates X and alphaX sequences for the cases of tagging genes (at either 5' or 3' end)
+    def generate_start_end_sequences(self, left_chunk, right_chunk, rsite_side, rsite_position, rsite, minhomology, R, stop_codon_offset=0):
+        """Generates pop_in and pop_out sequences for the cases of tagging genes (at either 5' or 3' end)
 
         Splitted in two cases, depending on the position of the cutsite:
         rsite_side argument can have 'left' or 'right' values. 
@@ -100,16 +98,16 @@ class PIPOline:
             raise ValueError('Wrong riste_side value')
 
         if rsite_side == 'left':
-            X = left_chunk[rsite_position-minhomology:len(left_chunk)-stop_codon_offset]
-            alphaX = right_chunk[:int(alpha*len(X))]
-            return X, alphaX
+            pop_in = left_chunk[rsite_position-minhomology:len(left_chunk)-stop_codon_offset]
+            pop_out = right_chunk[:int(R*len(pop_in))]
+            return pop_in, pop_out
         else:
-            X = right_chunk[:rsite_position+minhomology]
-            alphaX = left_chunk[-int(alpha*len(X)):len(left_chunk)-stop_codon_offset]
-            return alphaX, X
+            pop_in = right_chunk[:rsite_position+minhomology]
+            pop_out = left_chunk[-int(R*len(pop_in)):len(left_chunk)-stop_codon_offset]
+            return pop_out, pop_in
 
 
-    def rsite_search_5_tag(self, Gene, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs):
+    def rsite_search_5_tag(self, Gene, R, min_homology, left_of_Gene, right_of_Gene, FPGs):
         """Finds rsites for 5` tag modality
         """
 
@@ -121,16 +119,16 @@ class PIPOline:
             left_of_Gene, self.rsitelist, self.enamelist, 3, min_homology)
 
         start_end_sequences_gene = [self.generate_start_end_sequences(
-            left_of_Gene, Gene_and_right_of_Gene, 'right', rsite_pos, rsite, min_homology, alpha) for rsite_pos, rsite in zip(rsite_position_list_gene, rsitelist_gene)]
+            left_of_Gene, Gene_and_right_of_Gene, 'right', rsite_pos, rsite, min_homology, R) for rsite_pos, rsite in zip(rsite_position_list_gene, rsitelist_gene)]
         start_end_sequences_5UTR = [self.generate_start_end_sequences(
-            left_of_Gene, Gene_and_right_of_Gene, 'left', rsite_pos, rsite, min_homology, alpha) for rsite_pos, rsite in zip(rsite_position_list_5TR, rsitelist_5UTR)]
+            left_of_Gene, Gene_and_right_of_Gene, 'left', rsite_pos, rsite, min_homology, R) for rsite_pos, rsite in zip(rsite_position_list_5TR, rsitelist_5UTR)]
 
         full_sequences = [
             [start_seq+FPG[:-3]+self.linker+end_seq for FPG in FPGs] #We don't take the stop codon from FPG
             for start_seq, end_seq in start_end_sequences_gene+start_end_sequences_5UTR
         ]
-        real_alphas = [len(alphaX)/float(len(X)) for alphaX,X in start_end_sequences_gene] + \
-            [len(alphaX)/float(len(X)) for X,alphaX in start_end_sequences_5UTR]
+        real_Rs = [len(pop_out)/float(len(pop_in)) for pop_out,pop_in in start_end_sequences_gene] + \
+            [len(pop_out)/float(len(pop_in)) for pop_in,pop_out in start_end_sequences_5UTR]
 
         return {
             'rsitelist': np.append(rsitelist_gene, rsitelist_5UTR),
@@ -139,11 +137,11 @@ class PIPOline:
             'rsite_places': ['in gene+3`UTR']*len(rsitelist_gene)+['in 5`UTR']*len(rsitelist_5UTR),
             'full_sequences': full_sequences,
             'start_end_sequences': start_end_sequences_gene+start_end_sequences_5UTR,
-            'real_alphas': real_alphas
+            'real_Rs': real_Rs
         }
 
 
-    def rsite_search_3_tag(self, Gene, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs):
+    def rsite_search_3_tag(self, Gene, R, min_homology, left_of_Gene, right_of_Gene, FPGs):
         """Finds rsites for 3` tag modality
         """
 
@@ -155,11 +153,11 @@ class PIPOline:
             right_of_Gene, self.rsitelist, self.enamelist, 5, min_homology)
 
         start_end_sequences_gene = [
-            self.generate_start_end_sequences(left_of_Gene_and_Gene, right_of_Gene, 'left', rsite_pos, rsite, min_homology, alpha, stop_codon_offset=3)
+            self.generate_start_end_sequences(left_of_Gene_and_Gene, right_of_Gene, 'left', rsite_pos, rsite, min_homology, R, stop_codon_offset=3)
             for rsite_pos, rsite in zip(rsite_position_list_gene, rsitelist_gene)
         ]
         start_end_sequences_3UTR = [
-            self.generate_start_end_sequences(left_of_Gene_and_Gene, right_of_Gene, 'right', rsite_pos, rsite, min_homology, alpha, stop_codon_offset=3)
+            self.generate_start_end_sequences(left_of_Gene_and_Gene, right_of_Gene, 'right', rsite_pos, rsite, min_homology, R, stop_codon_offset=3)
             for rsite_pos, rsite in zip(rsite_position_list_3UTR, rsitelist_3UTR)
         ]
 
@@ -167,8 +165,8 @@ class PIPOline:
             [start_seq+self.linker+FPG+end_seq for FPG in FPGs]
             for start_seq, end_seq in start_end_sequences_gene+start_end_sequences_3UTR
         ]
-        real_alphas = [len(alphaX)/float(len(X)) for X,alphaX in start_end_sequences_gene] + \
-            [len(alphaX)/float(len(X)) for alphaX,X in start_end_sequences_3UTR]
+        real_Rs = [len(pop_out)/float(len(pop_in)) for pop_in,pop_out in start_end_sequences_gene] + \
+            [len(pop_out)/float(len(pop_in)) for pop_out,pop_in in start_end_sequences_3UTR]
 
         return {
             'rsitelist': np.append(rsitelist_gene, rsitelist_3UTR),
@@ -177,11 +175,11 @@ class PIPOline:
             'rsite_places': ['in 5`UTR+gene']*len(rsitelist_gene)+['in 3`UTR']*len(rsitelist_3UTR),
             'full_sequences': full_sequences,
             'start_end_sequences': start_end_sequences_gene+start_end_sequences_3UTR,
-            'real_alphas': real_alphas
+            'real_Rs': real_Rs
         }
 
 
-    def rsite_search_delete(self, alpha, min_homology, left_of_Gene, right_of_Gene):
+    def rsite_search_delete(self, R, min_homology, left_of_Gene, right_of_Gene):
         """Finds rsites for delete modality
         """
 
@@ -191,16 +189,16 @@ class PIPOline:
                                                                             self.enamelist, 5, min_homology)
 
         start_end_sequences_5UTR = [self.generate_start_end_sequences(
-            left_of_Gene, right_of_Gene, 'left', rsite_pos, rsite, min_homology, alpha) for rsite_pos, rsite in zip(rsite_position_list_5, rsitelist_5)]
+            left_of_Gene, right_of_Gene, 'left', rsite_pos, rsite, min_homology, R) for rsite_pos, rsite in zip(rsite_position_list_5, rsitelist_5)]
         start_end_sequences_3UTR = [self.generate_start_end_sequences(
-            left_of_Gene, right_of_Gene, 'right', rsite_pos, rsite, min_homology, alpha) for rsite_pos, rsite in zip(rsite_position_list_3, rsitelist_3)]
+            left_of_Gene, right_of_Gene, 'right', rsite_pos, rsite, min_homology, R) for rsite_pos, rsite in zip(rsite_position_list_3, rsitelist_3)]
 
         full_sequences = [
             [start_seq+end_seq]
             for start_seq, end_seq in start_end_sequences_5UTR+start_end_sequences_3UTR
         ]
-        real_alphas = [len(alphaX)/len(X) for X,alphaX in start_end_sequences_5UTR] + \
-            [len(alphaX)/len(X) for alphaX,X in start_end_sequences_3UTR]
+        real_Rs = [len(pop_out)/len(pop_in) for pop_in,pop_out in start_end_sequences_5UTR] + \
+            [len(pop_out)/len(pop_in) for pop_out,pop_in in start_end_sequences_3UTR]
 
         return {
             'rsitelist': np.append(rsitelist_5, rsitelist_3),
@@ -209,11 +207,11 @@ class PIPOline:
             'rsite_places': ['in 5`']*len(rsitelist_5)+['in 3`']*len(rsitelist_3),
             'full_sequences': full_sequences,
             'start_end_sequences': start_end_sequences_5UTR+start_end_sequences_3UTR,
-            'real_alphas': real_alphas
+            'real_Rs': real_Rs
         }
 
 
-    def rsite_search(self, Gene, modality, alpha, min_homology=0, left_of_Gene='', right_of_Gene='', FPGs=[], FPGs_names = []):
+    def rsite_search(self, Gene, modality, R, min_homology=0, left_of_Gene='', right_of_Gene='', FPGs=[], FPGs_names = []):
         """This is the central function that finds suitable cutsites for the given list of FPGs and the linker
 
 
@@ -229,15 +227,15 @@ class PIPOline:
 
         #5' tagging
         if modality == 5:
-            return_dict = self.rsite_search_5_tag(Gene, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs)
+            return_dict = self.rsite_search_5_tag(Gene, R, min_homology, left_of_Gene, right_of_Gene, FPGs)
 
         # 3' tagging 
         elif modality == 3:
-            return_dict = self.rsite_search_3_tag(Gene, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs)
+            return_dict = self.rsite_search_3_tag(Gene, R, min_homology, left_of_Gene, right_of_Gene, FPGs)
 
         # Deletion
         else:
-            return_dict = self.rsite_search_delete(alpha, min_homology, left_of_Gene, right_of_Gene)
+            return_dict = self.rsite_search_delete(R, min_homology, left_of_Gene, right_of_Gene)
 
         full_sequences_per_rsite = return_dict['full_sequences']
         sort = np.argsort([len(x[0]) for x in full_sequences_per_rsite])
@@ -249,7 +247,7 @@ class PIPOline:
             RSiteInfo(
                 Gene,
                 modality,
-                alpha,
+                R,
                 min_homology,
                 left_of_Gene,
                 right_of_Gene,
@@ -262,7 +260,7 @@ class PIPOline:
                 return_dict['rsite_position_list'][i],
                 return_dict['start_end_sequences'][i][0],
                 return_dict['start_end_sequences'][i][1],
-                return_dict['real_alphas'][i]
+                return_dict['real_Rs'][i]
             ) for i in range(len(full_sequences_per_rsite))
         ]
 
@@ -482,10 +480,10 @@ class PIPOline:
                     start_name, rsite_info.start_seq, end_name, rsite_info.end_seq)
             )
             print(
-                "\nDesired alpha: {}, Realized alpha: {:.2} (which can be less"
-                " than the desired alpha if the gene-of-interest sequence is"
+                "\nDesired R: {}, Realized R: {:.2} (which can be less"
+                " than the desired R if the gene-of-interest sequence is"
                 " not long enough to find homology for the popout)".format(
-                    rsite_info.alpha, rsite_info.real_alpha)
+                    rsite_info.R, rsite_info.real_R)
             )
             print(
                 "\nTotal length of sequences from the gene-of-interest going into the insert is:",
@@ -594,7 +592,7 @@ class PIPOline:
         return optimal_plasmid
 
 
-    def run(self, Gene_path, modality, alpha, min_homology, FPG_paths, popular_enzyme_path=None, assembled_plasmid_name=None):
+    def run(self, Gene_path, modality, R, min_homology, FPG_paths, popular_enzyme_path=None, assembled_plasmid_name=None):
         """Assembles the plasmid by using subfunctions"""
         
         print('\nGene-of-interest sequence (ORF +/- 1000 bps):')
@@ -604,7 +602,7 @@ class PIPOline:
         print('\nFluorescent protein genes:')
         FPGs = [read_from_fsa(path)[1] for path in FPG_paths] if len(FPG_paths) else []
         FPGs_names = [path.split('/')[-1] for path in FPG_paths]
-        rsite_info_list = self.rsite_search(Gene, modality, alpha, min_homology, left_of_Gene, right_of_Gene, FPGs, FPGs_names)
+        rsite_info_list = self.rsite_search(Gene, modality, R, min_homology, left_of_Gene, right_of_Gene, FPGs, FPGs_names)
 
         compatible_restriction_sites = []
         MCS_rsites = None
@@ -650,7 +648,7 @@ def main(args):
     pipoline.run(
         args.Gene_path, 
         args.modality, 
-        args.alpha, 
+        args.R, 
         args.min_homology,
         args.FPG_paths, 
         args.popular_enzyme_path, 
@@ -661,22 +659,18 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="PIPOline arguments")
-    parser.add_argument("--backbone_path", type=str)#, default='./Test_examples/pETUL_backbone.fsa', help="")
-    parser.add_argument("--MCS_start_ind", type=int)#, default=1, help="")
-    parser.add_argument("--MCS_end_ind", type=int)#, default=108, help="")
-    parser.add_argument("--min_homology", type=int)#, default=70, help="")
-    parser.add_argument("--alpha", type=float)#, default=1.4, help="")
-    parser.add_argument('--Gene_path', type=str)#, default='./Test_examples/CLB2_3p_labeling/CLB2_pm_1000.fsa', help='')
-    parser.add_argument("--linker_path", type=str, default='')#, default='./Test_examples/long_linker.fsa', help="")
-    parser.add_argument("--modality", type=int)#, default=3, help="")
-    parser.add_argument("--enzyme_path", type=str)#, default='./Chris_code/raw_enzyme_list.txt', help='')
-    parser.add_argument("--popular_enzyme_path", type=str)
-    parser.add_argument("--FPG_paths", nargs="*", type=str, default=[
-        # './Test_examples/CLB2_3p_labeling/mCherry_FPG.fsa',
-        # './Test_examples/CLB2_3p_labeling/ymNeonGreen_FPG.fsa',
-        # './Test_examples/CLB2_3p_labeling/ymTq2_FPG.fsa'
-    ], help="")
-    parser.add_argument("--assembled_plasmid_name", type = str)
+    parser.add_argument("--backbone_path", type=str, default='./Test_examples/pETUL_backbone.fsa', help="Plasmid backbone used for PIPO")
+    parser.add_argument("--MCS_start_ind", type=int, default=1, help="Starting nucleotide of multiple cloning sequence (1-based counting)")
+    parser.add_argument("--MCS_end_ind", type=int, default=108, help="Ending nucleotide of multiple cloning sequence (1-based counting)")
+    parser.add_argument("--min_homology", type=int, default=70, help="Minimal length of DNA sequence used for homologous recombination during pop-in")
+    parser.add_argument("--R", type=float, default=2, help="Ratio between DNA sequence length used for pop-out vs. pop-in")
+    parser.add_argument('--Gene_path', type=str, default='./Test_examples/CLB2_3p_labeling/CLB2_pm_1000.fsa', help='ORF of the gene with 1000 bp upstream and downstream (in FASTA format)')
+    parser.add_argument("--linker_path", type=str, default='' default='./Test_examples/long_linker.fsa', help="Linker between the gene and the FPG")
+    parser.add_argument("--modality", type=int, default=0, help="Modality of the program that can assume one of the following values: 0 for gene deletion, 5 for gene tagging at the 5’ terminus or3 for gene tagging at the 3’ terminus")
+    parser.add_argument("--enzyme_path", type=str, default='./Test_examples/raw_enzyme_list.txt', help='List of enzymes that can be used for cloning and plasmid linearization before yeast transformation')
+    parser.add_argument("--popular_enzyme_path", type=str, help='List of enzymes to be considered for adding around linker and FPG')
+    parser.add_argument("--FPG_paths", nargs="*", type=str, default=['./Test_examples/CLB2_3p_labeling/mCherry_FPG.fsa','./Test_examples/CLB2_3p_labeling/ymNeonGreen_FPG.fsa'], help="List of fluorescent protein coding genes that should be considered during plasmid design ")
+    parser.add_argument("--assembled_plasmid_name", type = str, default='Assembled_plasmid.fsa', help="Name of the output FASTA file")
 
     args = parser.parse_args()
 
