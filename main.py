@@ -1,5 +1,4 @@
 import argparse
-from msilib.schema import FileSFPCatalog
 import numpy as np
 from utils import *
 
