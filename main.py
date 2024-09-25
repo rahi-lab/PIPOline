@@ -665,7 +665,7 @@ if __name__ == '__main__':
     parser.add_argument("--min_homology", type=int, default=70, help="Minimal length of DNA sequence used for homologous recombination during pop-in")
     parser.add_argument("--R", type=float, default=2, help="Ratio between DNA sequence length used for pop-out vs. pop-in")
     parser.add_argument('--Gene_path', type=str, default='./Test_examples/CLB2_3p_labeling/CLB2_pm_1000.fsa', help='ORF of the gene with 1000 bp upstream and downstream (in FASTA format)')
-    parser.add_argument("--linker_path", type=str, default='' default='./Test_examples/long_linker.fsa', help="Linker between the gene and the FPG")
+    parser.add_argument("--linker_path", type=str, default='./Test_examples/long_linker.fsa', help="Linker between the gene and the FPG")
     parser.add_argument("--modality", type=int, default=0, help="Modality of the program that can assume one of the following values: 0 for gene deletion, 5 for gene tagging at the 5’ terminus or3 for gene tagging at the 3’ terminus")
     parser.add_argument("--enzyme_path", type=str, default='./Test_examples/raw_enzyme_list.txt', help='List of enzymes that can be used for cloning and plasmid linearization before yeast transformation')
     parser.add_argument("--popular_enzyme_path", type=str, help='List of enzymes to be considered for adding around linker and FPG')
