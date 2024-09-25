@@ -496,8 +496,6 @@ class PIPOline:
        
         """Find good additonal cutsites to add on the joints between the gene chunks, linker and FPG
         Go through the list and check if they are good for use with these sequences"""
-
-        popular_rsitelist, popular_enamelist = read_enzyme_list(popular_enzyme_path)
         optimal_plasmid = None
 
         #to construct the optimal plasmid, around the FPG side of the two cutsites that surround it, add placeholder sequence to ensure high digestion efficency
@@ -525,6 +523,8 @@ class PIPOline:
                 f.close()
         
         if(modality == 3 or modality == 5):
+
+            popular_rsitelist, popular_enamelist = read_enzyme_list(popular_enzyme_path)
             good_pop_enzymes, good_pop_cutsites = self.find_additional_cutsites(full_plasmids, popular_rsitelist, popular_enamelist)
             
             #three additional cutsites that we introduce into the plasmid, to make the parts more modular
