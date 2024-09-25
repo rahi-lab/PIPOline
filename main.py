@@ -530,7 +530,9 @@ class PIPOline:
             #three additional cutsites that we introduce into the plasmid, to make the parts more modular
             rsite3, rsite4, rsite5 = self.verify_additional_cutsites(FPG_seq, self.linker, rsite_info.start_seq, rsite_info.end_seq, modality, good_pop_enzymes, good_pop_cutsites, rsite_info.rsite0, rsite1, rsite2)
             
-
+            if any(rsite == None for rsite in [rsite3, rsite4, rsite5]):
+                print("\nThere are not enough popular restriction enzymes in your list to assemble the insert.")
+                return None
                 
         if(modality == 5):
             optimal_plasmid = self.assemble_plasmid(
