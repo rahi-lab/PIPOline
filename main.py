@@ -422,7 +422,7 @@ class PIPOline:
         3. If rsite cuts final plasmid
         """
 
-        print("""\n\n****** Testing restriction site {}, sequence: {}, enzyme: {}, location: {} {}""".format(str(
+        print("""\n\n\n\n****** Testing restriction site {}, sequence: {}, enzyme: {}, location: {} {}""".format(str(
             rsite_id+1), rsite_info.rsite0, rsite_info.ename0, rsite_info.gene_rsite_position, rsite_info.rsite_place))
             
         # check if all full sequences have only one rsite0  
@@ -588,6 +588,8 @@ class PIPOline:
                     f.write('\n')
                     f.write(optimal_plasmid)
                 f.close()
+                # print that we are saving the plasmid to the file
+                print('\nOptimal plasmid found and saved to the file {}!'.format(assembled_plasmid_name))
 
             print("\nOther popular enzymes that can be used in place of the three listed above are {}".format(good_pop_enzymes[3:]))
         return optimal_plasmid
