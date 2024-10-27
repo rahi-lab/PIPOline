@@ -521,6 +521,8 @@ class PIPOline:
                     f.write('\n')
                     f.write(optimal_plasmid)
                 f.close()
+                # print that we are saved the plasmid to the file
+                print('\nOptimal plasmid found and saved to the file {}!'.format(assembled_plasmid_name))
         
         if(modality == 3 or modality == 5):
 
@@ -560,6 +562,8 @@ class PIPOline:
                     f.write('\n')
                     f.write(optimal_plasmid)
                 f.close()
+                # print that we are saved the plasmid to the file
+                print('\nOptimal plasmid found and saved to the file {}!'.format(assembled_plasmid_name))
 
         if(modality == 3):
             optimal_plasmid = self.assemble_plasmid(
@@ -588,7 +592,7 @@ class PIPOline:
                     f.write('\n')
                     f.write(optimal_plasmid)
                 f.close()
-                # print that we are saving the plasmid to the file
+                # print that we are saved the plasmid to the file
                 print('\nOptimal plasmid found and saved to the file {}!'.format(assembled_plasmid_name))
 
             print("\nOther popular enzymes that can be used in place of the three listed above are {}".format(good_pop_enzymes[3:]))
