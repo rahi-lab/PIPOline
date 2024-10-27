@@ -614,6 +614,8 @@ class PIPOline:
         compatible_restriction_sites = []
         MCS_rsites = None
         shortest_optimal_plasmid = None
+        # shortest_optimal_plasmid_length = float('inf')
+        shortest_optimal_plasmid_R = float('inf')
 
         print(
             "\n\n\n*************************************************************************************************************\n"\
@@ -644,8 +646,9 @@ class PIPOline:
                     # save shortest optimal plasmid found
                     if optimal_plasmid and not shortest_optimal_plasmid:
                         shortest_optimal_plasmid = optimal_plasmid
+                        shortest_optimal_plasmid_R = rsite_info.real_R
         
-        return shortest_optimal_plasmid, compatible_restriction_sites, MCS_rsites
+        return shortest_optimal_plasmid, compatible_restriction_sites, MCS_rsites, shortest_optimal_plasmid_R
 
 
 def main(args):
