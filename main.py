@@ -50,7 +50,10 @@ class PIPOline:
         self.backbone_no_MCS_3 = self.backbone[MCS_end_ind:]
 
         print('\nLinker:')
-        _, self.linker = read_from_fsa(linker_path)
+        if linker_path == None or linker_path == '':
+            self.linker = ''
+        else:
+            _, self.linker = read_from_fsa(linker_path)
 
         self.rsitelist, self.enamelist = read_enzyme_list(enzyme_path)
 
@@ -664,11 +667,11 @@ def main(args):
         print("Please provide either gene_name or Gene_path, not both.")
         return
 
-    individual_genes_folder = './individual_genes/'
-    overlapping_genes_file = './overlapping_genes.txt'
+    individual_genes_folder = os.path.join(os.path.dirname(__file__), 'individual_genes')
+    overlapping_genes_file = os.path.join(os.path.dirname(__file__), 'overlapping_genes.txt')
 
     overlapping_genes = read_overlapping_genes(overlapping_genes_file)
-    full_name_mapping = get_full_gene_names_mapping()
+    full_name_mapping = get_full_gene_names_mapping(individual_genes_folder)
     all_gene_sequences = read_fasta_files(individual_genes_folder)
 
 
@@ -697,7 +700,6 @@ def main(args):
         # Find best matching gene from the gene_database
         gene_record = SeqIO.read(args.Gene_path, "fasta")
         gene_seq = str(gene_record.seq)
-        gene_path = args.Gene_path
 
         print("Trying to identify the loaded gene sequence...")
         best_match = align_query_to_all(gene_seq, all_gene_sequences)
@@ -755,19 +757,19 @@ if __name__ == '__main__':
                         help="Minimal length of DNA sequence used for homologous recombination during pop-in")
     parser.add_argument("--R", type=float, default=2,
                         help="Ratio between DNA sequence length used for pop-out vs. pop-in")
-    parser.add_argument('--Gene_path', type=str, default='./Test_examples/CLB2_3p_labeling/CLB2_pm_1000.fsa',
+    parser.add_argument('--Gene_path', type=str, default=None,
                         help='ORF of the gene with 1000 bp upstream and downstream (in FASTA format)')
     parser.add_argument("--gene_name", type=str, default=None,
                         help="Name of the gene that is being cloned")
-    parser.add_argument("--linker_path", type=str, default='./Test_examples/long_linker.fsa',
+    parser.add_argument("--linker_path", type=str, default=None,
                         help="Linker between the gene and the FPG")
     parser.add_argument("--modality", type=int, default=0,
                         help="Modality of the program that can assume one of the following values: 0 for gene deletion, 5 for gene tagging at the 5’ terminus or3 for gene tagging at the 3’ terminus")
-    parser.add_argument("--enzyme_path", type=str, default='./Test_examples/raw_enzyme_list.txt',
+    parser.add_argument("--enzyme_path", type=str, default=None,
                         help='List of enzymes that can be used for cloning and plasmid linearization before yeast transformation')
     parser.add_argument("--popular_enzyme_path", type=str,
                         help='List of enzymes to be considered for adding around linker and FPG')
-    parser.add_argument("--FPG_paths", nargs="*", type=str, default=['./Test_examples/CLB2_3p_labeling/mCherry_FPG.fsa','./Test_examples/CLB2_3p_labeling/ymNeonGreen_FPG.fsa'],
+    parser.add_argument("--FPG_paths", nargs="*", type=str, default=[],
                         help="List of fluorescent protein coding genes that should be considered during plasmid design ")
     parser.add_argument("--assembled_plasmid_name", type = str, default='Assembled_plasmid.fsa',
                         help="Name of the output FASTA file")
