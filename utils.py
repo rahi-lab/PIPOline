@@ -168,9 +168,9 @@ def read_overlapping_genes(path):
     print(f"An error occurred: {e}")
     return {}
 
-def get_full_gene_names_mapping():
+def get_full_gene_names_mapping(individual_genes_folder):
     mapping = {}
-    for filename in os.listdir('/content/individual_genes/'):
+    for filename in os.listdir(individual_genes_folder):
       if not filename.endswith('.fasta') and not filename.endswith('.fsa') and not filename.endswith('.fa'):
         continue
       firsthalf, secondhalf = filename.replace('.fasta','').split('_', 1)
