@@ -1,6 +1,10 @@
 import re
+import os
+from collections import defaultdict
 
 import numpy as np
+from Bio import SeqIO
+from Bio.Align import PairwiseAligner
 
 
 def read_from_fsa(fsa_file_path):
@@ -140,3 +144,77 @@ def dna_to_protein(dna):
              break
 
      return protein
+
+def read_overlapping_genes(path):
+  """Reads lines from Overlapping_genes.txt."""
+  overlapping_genes = defaultdict(list)
+  try:
+    with open(path, 'r') as f:
+      lines = f.readlines()
+      for line in lines:
+        if "Chromosome" in line:
+          continue
+        line = line.strip()
+        split = line.split()
+        gene_1 = f"{split[3]} {split[4]}"
+        gene_2 = f"{split[8]} {split[9]}"
+        overlapping_genes[gene_1].append(gene_2)
+        overlapping_genes[gene_2].append(gene_1)
+    return overlapping_genes
+  except FileNotFoundError:
+    print(f"File '{path}' not found.")
+    return {}
+  except Exception as e:
+    print(f"An error occurred: {e}")
+    return {}
+
+def get_full_gene_names_mapping(individual_genes_folder):
+    mapping = {}
+    for filename in os.listdir(individual_genes_folder):
+      if not filename.endswith('.fasta') and not filename.endswith('.fsa') and not filename.endswith('.fa'):
+        continue
+      firsthalf, secondhalf = filename.replace('.fasta','').split('_', 1)
+      mapping[firsthalf] = f"{firsthalf} {secondhalf}"
+      mapping[secondhalf] = f"{firsthalf} {secondhalf}"
+    return mapping
+
+def read_fasta_files(directory):
+     # List all fasta files in the directory
+     fasta_files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(".fasta") or f.endswith(".fa")]
+     sequences = []
+
+     # Iterate over each fasta file
+     for fasta_file in fasta_files:
+         #print(f"Processing file: {fasta_file}")  # Log the file being processed
+         # Parse the sequences in the fasta file
+         records = list(SeqIO.parse(fasta_file, "fasta"))
+
+         # Check if the fasta file contains exactly one sequence
+         if len(records) == 1:
+             record = records[0]  # Get the single sequence
+             sequence_str = str(record.seq)
+             # Only keep sequences of length >= 2000
+             if len(sequence_str) >= 2000:
+                 #print(f"Adding sequence {record.id} of length {len(sequence_str)}")  # Log the sequence being added
+                 sequences.append((record.id, sequence_str))
+
+     return sequences
+
+def align_query_to_all(query_seq, sequences):
+     best_match = None
+     best_score = -float('inf')
+     aligner = PairwiseAligner()
+     aligner.mode = "global" #faster than local
+
+     # Align query sequence with each sequence
+     for seq_id, seq in sequences:
+         # Check if the absolute difference in length is less than 100 bp
+
+         if abs(len(query_seq) - len(seq)) < 50:
+             alignments = aligner.align(query_seq, seq)
+             score = alignments.score
+             if score > best_score:
+                 best_score = score
+                 best_match = (seq_id, seq, score)
+
+     return best_match

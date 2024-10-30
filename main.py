@@ -1,5 +1,4 @@
 import argparse
-from msilib.schema import FileSFPCatalog
 import numpy as np
 from utils import *
 
@@ -51,7 +50,10 @@ class PIPOline:
         self.backbone_no_MCS_3 = self.backbone[MCS_end_ind:]
 
         print('\nLinker:')
-        _, self.linker = read_from_fsa(linker_path)
+        if linker_path == None or linker_path == '':
+            self.linker = ''
+        else:
+            _, self.linker = read_from_fsa(linker_path)
 
         self.rsitelist, self.enamelist = read_enzyme_list(enzyme_path)
 
@@ -423,7 +425,7 @@ class PIPOline:
         3. If rsite cuts final plasmid
         """
 
-        print("""\n\n****** Testing restriction site {}, sequence: {}, enzyme: {}, location: {} {}""".format(str(
+        print("""\n\n\n\n****** Testing restriction site {}, sequence: {}, enzyme: {}, location: {} {}""".format(str(
             rsite_id+1), rsite_info.rsite0, rsite_info.ename0, rsite_info.gene_rsite_position, rsite_info.rsite_place))
             
         # check if all full sequences have only one rsite0  
@@ -497,8 +499,6 @@ class PIPOline:
        
         """Find good additonal cutsites to add on the joints between the gene chunks, linker and FPG
         Go through the list and check if they are good for use with these sequences"""
-
-        popular_rsitelist, popular_enamelist = read_enzyme_list(popular_enzyme_path)
         optimal_plasmid = None
 
         #to construct the optimal plasmid, around the FPG side of the two cutsites that surround it, add placeholder sequence to ensure high digestion efficency
@@ -524,14 +524,20 @@ class PIPOline:
                     f.write('\n')
                     f.write(optimal_plasmid)
                 f.close()
+                # print that we are saved the plasmid to the file
+                print('\nOptimal plasmid found and saved to the file {}!'.format(assembled_plasmid_name))
         
         if(modality == 3 or modality == 5):
+
+            popular_rsitelist, popular_enamelist = read_enzyme_list(popular_enzyme_path)
             good_pop_enzymes, good_pop_cutsites = self.find_additional_cutsites(full_plasmids, popular_rsitelist, popular_enamelist)
             
             #three additional cutsites that we introduce into the plasmid, to make the parts more modular
             rsite3, rsite4, rsite5 = self.verify_additional_cutsites(FPG_seq, self.linker, rsite_info.start_seq, rsite_info.end_seq, modality, good_pop_enzymes, good_pop_cutsites, rsite_info.rsite0, rsite1, rsite2)
             
-
+            if any(rsite == None for rsite in [rsite3, rsite4, rsite5]):
+                print("\nThere are not enough popular restriction enzymes in your list to assemble the insert.")
+                return None
                 
         if(modality == 5):
             optimal_plasmid = self.assemble_plasmid(
@@ -559,6 +565,8 @@ class PIPOline:
                     f.write('\n')
                     f.write(optimal_plasmid)
                 f.close()
+                # print that we are saved the plasmid to the file
+                print('\nOptimal plasmid found and saved to the file {}!'.format(assembled_plasmid_name))
 
         if(modality == 3):
             optimal_plasmid = self.assemble_plasmid(
@@ -587,6 +595,8 @@ class PIPOline:
                     f.write('\n')
                     f.write(optimal_plasmid)
                 f.close()
+                # print that we are saved the plasmid to the file
+                print('\nOptimal plasmid found and saved to the file {}!'.format(assembled_plasmid_name))
 
             print("\nOther popular enzymes that can be used in place of the three listed above are {}".format(good_pop_enzymes[3:]))
         return optimal_plasmid
@@ -607,6 +617,8 @@ class PIPOline:
         compatible_restriction_sites = []
         MCS_rsites = None
         shortest_optimal_plasmid = None
+        shortest_optimal_plasmid_R = None
+        shortest_optimal_plasmid_DNA_insert_length = None
 
         print(
             "\n\n\n*************************************************************************************************************\n"\
@@ -637,16 +649,92 @@ class PIPOline:
                     # save shortest optimal plasmid found
                     if optimal_plasmid and not shortest_optimal_plasmid:
                         shortest_optimal_plasmid = optimal_plasmid
-        
-        return shortest_optimal_plasmid, compatible_restriction_sites, MCS_rsites
+                        shortest_optimal_plasmid_R = rsite_info.real_R
+                        shortest_optimal_plasmid_DNA_insert_length = len(rsite_info.start_seq) + len(rsite_info.end_seq)
+
+        return (
+            shortest_optimal_plasmid,
+            compatible_restriction_sites,
+            MCS_rsites,
+            shortest_optimal_plasmid_R,
+            shortest_optimal_plasmid_DNA_insert_length,
+        )
 
 
 def main(args):
+
+    if bool(args.gene_name) == bool(args.Gene_path):
+        print("Please provide either gene_name or Gene_path, not both.")
+        return
+
+    individual_genes_folder = os.path.join(os.path.dirname(__file__), 'individual_genes')
+    overlapping_genes_file = os.path.join(os.path.dirname(__file__), 'overlapping_genes.txt')
+
+    overlapping_genes = read_overlapping_genes(overlapping_genes_file)
+    full_name_mapping = get_full_gene_names_mapping(individual_genes_folder)
+    all_gene_sequences = read_fasta_files(individual_genes_folder)
+
+
+    # Find gene path based on gene name or use the provided gene path
+    if args.Gene_path:
+        gene_path = args.Gene_path
+    else:
+        # Search for gene file in individual_genes_folder
+        found = False
+        for filename in os.listdir(individual_genes_folder):
+            if filename.endswith('.fasta') or filename.endswith('.fsa') or filename.endswith('.fa'):
+                base_name = os.path.splitext(filename)[0]
+                file_parts = base_name.split('_', 1)
+                if args.gene_name in file_parts:
+                    gene_path = os.path.join(individual_genes_folder, filename)
+                    found = True
+                    break
+        if not found:
+            print(f"No gene file found matching the name '{args.gene_name}'.")
+            return
     
+    # Find gene name by matching the gene sequence or use the provided gene name
+    if args.gene_name:
+        matching_gene_name = args.gene_name
+    else:
+        # Find best matching gene from the gene_database
+        gene_record = SeqIO.read(args.Gene_path, "fasta")
+        gene_seq = str(gene_record.seq)
+
+        print("Trying to identify the loaded gene sequence...")
+        best_match = align_query_to_all(gene_seq, all_gene_sequences)
+        if best_match is not None and best_match[2] / len(gene_seq) > 0.9:
+            print(
+                f"Gene matching successful. Uploaded gene matches {best_match[0]} gene from the database.\n"
+            )
+            matching_gene_name = best_match[0]
+        else:
+            matching_gene_name = ""
+            print(f"No matching gene found in the gene database.")
+
+        # Check if start and stop codon at correct positions
+        start_codon = gene_seq[1000:1003] if len(gene_seq) >= 1003 else ""
+        stop_codon = gene_seq[-1003:-1000] if len(gene_seq) >= 1003 else ""
+        if start_codon != "ATG":
+            print(f"Start codon '{start_codon}' is not 'ATG'.")
+        if stop_codon not in ["TAA", "TAG", "TGA"]:
+            print(f"Stop codon '{stop_codon}' is not one of 'TAA', 'TAG', or 'TGA'.")
+
+    # Check if there are overlapping genes with the provided gene
+    if (
+        matching_gene_name != ""
+        and matching_gene_name in full_name_mapping
+        and full_name_mapping[matching_gene_name] in overlapping_genes
+    ):
+        full_name = full_name_mapping[matching_gene_name]
+        print(
+            f"Gene {full_name} is overlapping with the following genes: {', '.join(overlapping_genes[full_name])}"
+        )
+
     pipoline = PIPOline(args.backbone_path, args.MCS_start_ind, args.MCS_end_ind, args.linker_path, args.enzyme_path)
 
     pipoline.run(
-        args.Gene_path, 
+        gene_path, 
         args.modality, 
         args.R, 
         args.min_homology,
@@ -659,18 +747,32 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="PIPOline arguments")
-    parser.add_argument("--backbone_path", type=str, default='./Test_examples/pETUL_backbone.fsa', help="Plasmid backbone used for PIPO")
-    parser.add_argument("--MCS_start_ind", type=int, default=1, help="Starting nucleotide of multiple cloning sequence (1-based counting)")
-    parser.add_argument("--MCS_end_ind", type=int, default=108, help="Ending nucleotide of multiple cloning sequence (1-based counting)")
-    parser.add_argument("--min_homology", type=int, default=70, help="Minimal length of DNA sequence used for homologous recombination during pop-in")
-    parser.add_argument("--R", type=float, default=2, help="Ratio between DNA sequence length used for pop-out vs. pop-in")
-    parser.add_argument('--Gene_path', type=str, default='./Test_examples/CLB2_3p_labeling/CLB2_pm_1000.fsa', help='ORF of the gene with 1000 bp upstream and downstream (in FASTA format)')
-    parser.add_argument("--linker_path", type=str, default='' default='./Test_examples/long_linker.fsa', help="Linker between the gene and the FPG")
-    parser.add_argument("--modality", type=int, default=0, help="Modality of the program that can assume one of the following values: 0 for gene deletion, 5 for gene tagging at the 5’ terminus or3 for gene tagging at the 3’ terminus")
-    parser.add_argument("--enzyme_path", type=str, default='./Test_examples/raw_enzyme_list.txt', help='List of enzymes that can be used for cloning and plasmid linearization before yeast transformation')
-    parser.add_argument("--popular_enzyme_path", type=str, help='List of enzymes to be considered for adding around linker and FPG')
-    parser.add_argument("--FPG_paths", nargs="*", type=str, default=['./Test_examples/CLB2_3p_labeling/mCherry_FPG.fsa','./Test_examples/CLB2_3p_labeling/ymNeonGreen_FPG.fsa'], help="List of fluorescent protein coding genes that should be considered during plasmid design ")
-    parser.add_argument("--assembled_plasmid_name", type = str, default='Assembled_plasmid.fsa', help="Name of the output FASTA file")
+    parser.add_argument("--backbone_path", type=str, default='./Test_examples/pETUL_backbone.fsa',
+                        help="Plasmid backbone used for PIPO")
+    parser.add_argument("--MCS_start_ind", type=int, default=1,
+                        help="Starting nucleotide of multiple cloning sequence (1-based counting)")
+    parser.add_argument("--MCS_end_ind", type=int, default=108,
+                        help="Ending nucleotide of multiple cloning sequence (1-based counting)")
+    parser.add_argument("--min_homology", type=int, default=70,
+                        help="Minimal length of DNA sequence used for homologous recombination during pop-in")
+    parser.add_argument("--R", type=float, default=2,
+                        help="Ratio between DNA sequence length used for pop-out vs. pop-in")
+    parser.add_argument('--Gene_path', type=str, default=None,
+                        help='ORF of the gene with 1000 bp upstream and downstream (in FASTA format)')
+    parser.add_argument("--gene_name", type=str, default=None,
+                        help="Name of the gene that is being cloned")
+    parser.add_argument("--linker_path", type=str, default=None,
+                        help="Linker between the gene and the FPG")
+    parser.add_argument("--modality", type=int, default=0,
+                        help="Modality of the program that can assume one of the following values: 0 for gene deletion, 5 for gene tagging at the 5’ terminus or3 for gene tagging at the 3’ terminus")
+    parser.add_argument("--enzyme_path", type=str, default=None,
+                        help='List of enzymes that can be used for cloning and plasmid linearization before yeast transformation')
+    parser.add_argument("--popular_enzyme_path", type=str,
+                        help='List of enzymes to be considered for adding around linker and FPG')
+    parser.add_argument("--FPG_paths", nargs="*", type=str, default=[],
+                        help="List of fluorescent protein coding genes that should be considered during plasmid design ")
+    parser.add_argument("--assembled_plasmid_name", type = str, default='Assembled_plasmid.fsa',
+                        help="Name of the output FASTA file")
 
     args = parser.parse_args()
 
