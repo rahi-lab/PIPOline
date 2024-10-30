@@ -231,21 +231,21 @@ def search_gene_file(individual_genes_folder, gene_name):
 
 def validate_gene_data(gene_name, gene_path, individual_genes_folder, overlapping_genes_file):
 
-    # Load overlapping_genes, full_name_mapping, all_gene_sequences
+    # Load overlapping_genes, full_name_mapping
     overlapping_genes = read_overlapping_genes(overlapping_genes_file)
     full_name_mapping = get_full_gene_names_mapping(individual_genes_folder)
-    all_gene_sequences = read_fasta_files(individual_genes_folder)
 
     # Find gene name by matching the gene sequence or use the provided gene name
     if gene_name:
         print(f"Gene name provided: {gene_name}")
         matching_gene_name = gene_name
     else:
+        print(f"Gene path provided: {gene_path}")
+        print("Trying to identify the loaded gene sequence...")
         # Find best matching gene from the gene_database
+        all_gene_sequences = read_fasta_files(individual_genes_folder)
         gene_record = SeqIO.read(gene_path, "fasta")
         gene_seq = str(gene_record.seq)
-
-        print("Trying to identify the loaded gene sequence...")
         best_match = align_query_to_all(gene_seq, all_gene_sequences)
         if best_match is not None and best_match[2] / len(gene_seq) > 0.9:
             print(
