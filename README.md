@@ -16,6 +16,8 @@ PIPOline is a tool designed to generate plasmids for pop-out-based tagging or de
 
 PIPOline automates the process of designing plasmids for gene manipulation in yeast. It identifies suitable restriction sites for integration and pop-out recombination, assembles the necessary DNA sequences, and ensures compatibility with fluorescent protein genes (FPGs) and linkers when tagging genes.
 
+This repo contains information needed to run PIPOline from the command line. PIPOline can be also run through online user interface available [here](https://colab.research.google.com/drive/12hle7b94_j6DbAeaJFaCH6jbU1yM1f_Z).
+
 ## Installation
 
 To set up the environment for PIPOline, follow these steps:
