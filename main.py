@@ -20,7 +20,7 @@ def main(args):
             print(f"No gene file found matching the name '{args.gene_name}'.")
             return
     else:
-        gene_path = args.Gene_path
+        gene_path = args.gene_path
 
     # Validate gene data
     validate_gene_data(args.gene_name, gene_path, INDIVIDUAL_GENES_FOLDER, OVERLAPPING_GENES_FILE)
@@ -51,7 +51,7 @@ if __name__ == '__main__':
                         help="Minimal length of DNA sequence used for homologous recombination during pop-in")
     parser.add_argument("--R", type=float, default=2,
                         help="Ratio between DNA sequence length used for pop-out vs. pop-in")
-    parser.add_argument('--Gene_path', type=str, default=None,
+    parser.add_argument('--gene_path', type=str, default=None,
                         help='ORF of the gene with 1000 bp upstream and downstream (in FASTA format)')
     parser.add_argument("--gene_name", type=str, default=None,
                         help="Name of the gene that is being cloned")
